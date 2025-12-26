@@ -1,0 +1,8 @@
+{
+  "projectId": "aa0ec3b2-6ab5-40c5-bc76-17c941172ca5",
+  "createdAt": 1735207440000,
+  "startupCommands": [
+    "npx react-native start --port 8083",
+    "cd MomtnApp && bun run dev"
+  ]
+}
