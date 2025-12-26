@@ -15,6 +15,7 @@ export class AuthService {
         GoogleSignin.configure({
           webClientId: '861205572558-qbv7g5gannkdcuekg3kqspb98k177nju.apps.googleusercontent.com',
           offlineAccess: true,
+          scopes: ['email', 'profile'],
         });
       }
     } catch (error) {
