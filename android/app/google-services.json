@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "861205572558-qbv7g5gannkdcuekg3kqspb98k177nju.apps.googleusercontent.com",
+          "client_id": "861205572558-gvd6t73u1dt60eiijrbtq0nj2hbvh921.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.myapp1reactnative",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "861205572558-djr8p23o8r0n65unmjvi5gs3jsceih53.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,7 +35,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "861205572558-qbv7g5gannkdcuekg3kqspb98k177nju.apps.googleusercontent.com",
+              "client_id": "861205572558-djr8p23o8r0n65unmjvi5gs3jsceih53.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

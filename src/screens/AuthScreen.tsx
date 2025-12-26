@@ -56,28 +56,30 @@ const AuthScreen: React.FC = () => {
             <HeartLogo size="large" />
           </View>
 
-          <View style={styles.authCard}>
-            <Text style={styles.welcomeText}>مرحباً بك</Text>
-            <Text style={styles.instructionText}>سجل دخولك بضغطة واحدة لتبدأ رحلتك</Text>
+            <View style={styles.authCard}>
+              <Text style={styles.welcomeText}>مرحباً بك</Text>
+              <Text style={styles.instructionText}>سجل دخولك بضغطة واحدة لتبدأ رحلتك</Text>
 
-            <TouchableOpacity
-              style={[styles.googleButton, loading && styles.buttonDisabled]}
-              onPress={handleGoogleSignIn}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Text style={styles.googleButtonText}>
-                    الدخول عبر جوجل
-                  </Text>
-                  <Icon name="logo-google" size={20} color="white" />
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={[styles.googleButton, loading && styles.buttonDisabled]}
+                onPress={handleGoogleSignIn}
+                disabled={loading}
+                activeOpacity={0.9}
+              >
+                {loading ? (
+                  <ActivityIndicator color={Colors.googleBlue} />
+                ) : (
+                  <View style={styles.buttonContent}>
+                    <View style={styles.googleIconWrapper}>
+                      <Icon name="logo-google" size={24} color={Colors.googleBlue} />
+                    </View>
+                    <Text style={styles.googleButtonText}>
+                      متابعة باستخدام جوجل
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>بالمتابعة، أنت توافق على شروط الاستخدام</Text>
@@ -124,16 +126,14 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     width: '100%',
-    height: 80,
-    backgroundColor: 'white',
-    borderRadius: 30,
+    height: 68,
+    backgroundColor: Colors.white,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.lg,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    elevation: 10,
+    ...Shadows.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   buttonContent: {
     flexDirection: 'row',
@@ -141,11 +141,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
   },
-  googleButtonText: {
-    color: Colors.primary,
-    fontSize: 22,
-    fontWeight: '900',
+  googleIconWrapper: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#f1f3f4',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: Spacing.md,
+  },
+  googleButtonText: {
+    color: '#3c4043',
+    fontSize: 19,
+    fontWeight: '700',
   },
   buttonDisabled: {
     opacity: 0.7,
