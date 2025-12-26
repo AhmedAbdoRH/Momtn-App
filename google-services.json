@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "861205572558",
+    "project_id": "salamandroidapp",
+    "storage_bucket": "salamandroidapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861205572558:android:92c2ae78b103f765c1599f",
+        "android_client_info": {
+          "package_name": "com.myapp1reactnative"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDN_KRHU9U80XMnS-p7h81bPsnEo4QKtxQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

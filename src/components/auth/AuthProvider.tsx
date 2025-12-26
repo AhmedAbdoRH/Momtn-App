@@ -1,0 +1,362 @@
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  ReactNode,
+} from 'react';
+import { Platform } from 'react-native';
+import { supabase } from '../../services/supabase';
+import { AuthService } from '../../services/auth';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import messaging from '@react-native-firebase/messaging';
+import { NotificationsService } from '../../services/notifications';
+
+interface AuthContextType {
+  session: Session | null;
+  user: SupabaseUser | null;
+  signUp: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: any; user?: SupabaseUser | null }>;
+  signIn: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: any; user?: SupabaseUser | null }>;
+  signOut: () => Promise<void>;
+  loading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const userRef = useRef<SupabaseUser | null>(null);
+
+  // Keep userRef in sync with user state
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  // Sync user data to database
+  const syncUserToDatabase = useCallback(async (authUser: SupabaseUser) => {
+    try {
+      const displayName =
+        authUser.user_metadata?.full_name ||
+        authUser.email?.split('@')[0] ||
+        'مستخدم';
+
+      const email = authUser.email;
+      if (!email) {
+        console.error('User email is required');
+        return;
+      }
+
+      const { error } = await supabase.from('users').upsert(
+        {
+          id: authUser.id,
+          email: email,
+          full_name: displayName,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'id',
+        },
+      );
+
+      if (error) {
+        console.error('Error syncing user to database:', error);
+      } else {
+        console.log('User synced to database successfully');
+      }
+    } catch (error) {
+      console.error('Error in syncUserToDatabase:', error);
+    }
+  }, []);
+
+  // Register device token for push notifications
+  const registerDeviceToken = useCallback(async (userId: string) => {
+    try {
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (enabled) {
+        const token = await messaging().getToken();
+        console.log('FCM Token:', token);
+
+        // Subscribe to general topic for testing
+        await messaging().subscribeToTopic('all_users');
+        console.log('Subscribed to all_users topic');
+
+        const platform = Platform.OS;
+
+        const { error } = await supabase.from('device_tokens').upsert(
+          {
+            user_id: userId,
+            token,
+            platform,
+          },
+          {
+            onConflict: 'user_id, token',
+          },
+        );
+
+        if (error) {
+          console.error('Error saving device token:', error);
+        } else {
+          console.log('Device token registered successfully');
+        }
+      } else {
+        console.log('Notification permission not granted');
+      }
+    } catch (error) {
+      console.error('Error registering device token:', error);
+    }
+  }, []);
+
+  // Handle foreground messages
+  const setupForegroundMessageHandler = useCallback(() => {
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('Foreground message received:', remoteMessage);
+
+      const title =
+        remoteMessage.notification?.title ||
+        (remoteMessage.data?.title as string) ||
+        'إشعار جديد';
+      const body =
+        remoteMessage.notification?.body ||
+        (remoteMessage.data?.body as string) ||
+        '';
+
+      await NotificationsService.showLocalNotification(
+        title,
+        body,
+        remoteMessage.data,
+      );
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Initialize auth
+  const initializeAuth = useCallback(async () => {
+    try {
+      console.log('Initializing auth...');
+
+      // Get current session
+      const {
+        data: { session: currentSession },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error('Error getting session:', error);
+      }
+
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+
+      if (currentSession?.user) {
+        syncUserToDatabase(currentSession.user);
+        registerDeviceToken(currentSession.user.id);
+      }
+
+      // Initialize notifications
+      await NotificationsService.initialize();
+
+      // Show welcome notification
+      if (currentSession?.user) {
+        NotificationsService.showLocalNotification(
+          'مرحباً بك في ممتن',
+          'تم تفعيل نظام الإشعارات بنجاح',
+        );
+      }
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [syncUserToDatabase, registerDeviceToken]);
+
+  useEffect(() => {
+    initializeAuth();
+
+    // Setup auth state listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log('Auth state changed:', event);
+
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+
+      if (event === 'SIGNED_IN' && currentSession?.user) {
+        syncUserToDatabase(currentSession.user);
+        registerDeviceToken(currentSession.user.id);
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+      }
+    });
+
+    // Setup foreground message handler
+    const unsubscribeMessaging = setupForegroundMessageHandler();
+
+    // Listen for token refresh
+    const unsubscribeTokenRefresh = messaging().onTokenRefresh(
+      async newToken => {
+        console.log('FCM Token refreshed:', newToken);
+        const currentUser = userRef.current;
+        if (currentUser?.id) {
+          await supabase.from('device_tokens').upsert(
+            {
+              user_id: currentUser.id,
+              token: newToken,
+              platform: Platform.OS,
+            },
+            {
+              onConflict: 'user_id, token',
+            },
+          );
+        }
+      },
+    );
+
+    return () => {
+      subscription.unsubscribe();
+      unsubscribeMessaging();
+      unsubscribeTokenRefresh();
+    };
+  }, [
+    initializeAuth,
+    syncUserToDatabase,
+    registerDeviceToken,
+    setupForegroundMessageHandler,
+  ]);
+
+  const signUp = async (
+    email: string,
+    password: string,
+  ): Promise<{ error: any; user?: SupabaseUser | null }> => {
+    try {
+      setLoading(true);
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: email.split('@')[0],
+          },
+        },
+      });
+
+      if (error) {
+        return { error, user: null };
+      }
+
+      if (data.user) {
+        syncUserToDatabase(data.user);
+        registerDeviceToken(data.user.id);
+      }
+
+      return { error: null, user: data.user };
+    } catch (error: any) {
+      console.error('Error during sign up:', error);
+      return { error, user: null };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async (
+    email: string,
+    password: string,
+  ): Promise<{ error: any; user?: SupabaseUser | null }> => {
+    try {
+      setLoading(true);
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error, user: null };
+      }
+
+      if (data.user) {
+        syncUserToDatabase(data.user);
+        registerDeviceToken(data.user.id);
+      }
+
+      return { error: null, user: data.user };
+    } catch (error: any) {
+      console.error('Error during sign in:', error);
+      return { error, user: null };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      setLoading(true);
+
+      // Remove device token before signing out
+      if (user?.id) {
+        try {
+          const token = await messaging().getToken();
+          await supabase
+            .from('device_tokens')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('token', token);
+        } catch (tokenError) {
+          console.error('Error removing device token:', tokenError);
+        }
+      }
+
+      await AuthService.signOut();
+      setSession(null);
+      setUser(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const value: AuthContextType = {
+    session,
+    user,
+    signUp,
+    signIn,
+    signOut,
+    loading,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export default AuthProvider;
