@@ -11,13 +11,13 @@ export class AuthService {
   // تهيئة Google Sign-In
   static configureGoogleSignIn() {
     try {
-      if (GoogleSignin) {
-        GoogleSignin.configure({
-          webClientId: '861205572558-qbv7g5gannkdcuekg3kqspb98k177nju.apps.googleusercontent.com',
-          offlineAccess: true,
-          scopes: ['email', 'profile'],
-        });
-      }
+        if (GoogleSignin) {
+          GoogleSignin.configure({
+            webClientId: '861205572558-cbg4rq9lh3gcp6qmah9l6los9aejdklv.apps.googleusercontent.com',
+            offlineAccess: true,
+            scopes: ['email', 'profile'],
+          });
+        }
     } catch (error) {
       console.warn('Google Sign-In configuration failed:', error);
     }
