@@ -11,9 +11,8 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { useAuth } from '../components/auth/AuthProvider';
+  import LinearGradient from 'react-native-linear-gradient';
+  import { useAuth } from '../components/auth/AuthProvider';
 import HeartLogo from '../../components/HeartLogo';
 import {
   Colors,
@@ -67,16 +66,20 @@ const AuthScreen: React.FC = () => {
                   activeOpacity={0.8}
                 >
                   {loading ? (
-                    <ActivityIndicator color={Colors.white} />
+                    <ActivityIndicator color={Colors.googleBlue} />
                   ) : (
-                    <View style={styles.buttonContent}>
-                      <View style={styles.googleIconWrapper}>
-                        <Icon name="logo-google" size={24} color={Colors.white} />
+                      <View style={styles.buttonContent}>
+                        <Text style={styles.googleButtonText}>
+                          متابعة باستخدام جوجل
+                        </Text>
+                        <View style={styles.googleIconWrapper}>
+                          <Image 
+                            source={require('../../assets/google_logo.png')} 
+                            style={styles.googleIcon}
+                            resizeMode="contain"
+                          />
+                        </View>
                       </View>
-                      <Text style={styles.googleButtonText}>
-                        متابعة باستخدام جوجل
-                      </Text>
-                    </View>
                   )}
                 </TouchableOpacity>
             </View>
@@ -127,32 +130,35 @@ const styles = StyleSheet.create({
     googleButton: {
       width: '100%',
       height: 68,
-      backgroundColor: Colors.googleBlue,
+      backgroundColor: Colors.white,
       borderRadius: 20,
       justifyContent: 'center',
       alignItems: 'center',
-      ...Shadows.google,
+      ...Shadows.xl,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
+      borderColor: 'rgba(0, 0, 0, 0.05)',
     },
     buttonContent: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       width: '100%',
+      paddingHorizontal: Spacing.md,
     },
     googleIconWrapper: {
-      width: 44,
-      height: 44,
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-      borderRadius: 12,
+      width: 40,
+      height: 40,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: Spacing.md,
+      marginLeft: Spacing.md,
+    },
+    googleIcon: {
+      width: 32,
+      height: 32,
     },
     googleButtonText: {
-      color: Colors.white,
-      fontSize: 19,
+      color: '#444',
+      fontSize: 18,
       fontWeight: '700',
     },
   buttonDisabled: {
