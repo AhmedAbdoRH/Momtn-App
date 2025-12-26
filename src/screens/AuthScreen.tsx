@@ -60,25 +60,25 @@ const AuthScreen: React.FC = () => {
               <Text style={styles.welcomeText}>مرحباً بك</Text>
               <Text style={styles.instructionText}>سجل دخولك بضغطة واحدة لتبدأ رحلتك</Text>
 
-              <TouchableOpacity
-                style={[styles.googleButton, loading && styles.buttonDisabled]}
-                onPress={handleGoogleSignIn}
-                disabled={loading}
-                activeOpacity={0.9}
-              >
-                {loading ? (
-                  <ActivityIndicator color={Colors.googleBlue} />
-                ) : (
-                  <View style={styles.buttonContent}>
-                    <View style={styles.googleIconWrapper}>
-                      <Icon name="logo-google" size={24} color={Colors.googleBlue} />
+                <TouchableOpacity
+                  style={[styles.googleButton, loading && styles.buttonDisabled]}
+                  onPress={handleGoogleSignIn}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <ActivityIndicator color={Colors.white} />
+                  ) : (
+                    <View style={styles.buttonContent}>
+                      <View style={styles.googleIconWrapper}>
+                        <Icon name="logo-google" size={24} color={Colors.white} />
+                      </View>
+                      <Text style={styles.googleButtonText}>
+                        متابعة باستخدام جوجل
+                      </Text>
                     </View>
-                    <Text style={styles.googleButtonText}>
-                      متابعة باستخدام جوجل
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
             </View>
 
           <View style={styles.footer}>
@@ -124,37 +124,37 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.huge,
     opacity: 0.8,
   },
-  googleButton: {
-    width: '100%',
-    height: 68,
-    backgroundColor: Colors.white,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadows.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  googleIconWrapper: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#f1f3f4',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  googleButtonText: {
-    color: '#3c4043',
-    fontSize: 19,
-    fontWeight: '700',
-  },
+    googleButton: {
+      width: '100%',
+      height: 68,
+      backgroundColor: Colors.googleBlue,
+      borderRadius: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      ...Shadows.google,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    buttonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '100%',
+    },
+    googleIconWrapper: {
+      width: 44,
+      height: 44,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: Spacing.md,
+    },
+    googleButtonText: {
+      color: Colors.white,
+      fontSize: 19,
+      fontWeight: '700',
+    },
   buttonDisabled: {
     opacity: 0.7,
   },
