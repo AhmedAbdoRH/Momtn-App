@@ -3,6 +3,6 @@
   "createdAt": 1735207440000,
   "startupCommands": [
     "npx react-native start --port 8083",
-    "cd MomtnApp && bun run dev"
+    "cd MomtnApp; bun run dev"
   ]
 }

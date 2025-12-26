@@ -1,0 +1,26 @@
+Alias name: momtn-key
+Creation date: ??þ/??þ/????
+Entry type: PrivateKeyEntry
+Certificate chain length: 1
+Certificate[?]:
+Owner: CN=Ahmed Abdo, OU=Rehlat Hadaf, O=Rehlat Hadaf, L=Benha, ST=Benha, C=20
+Issuer: CN=Ahmed Abdo, OU=Rehlat Hadaf, O=Rehlat Hadaf, L=Benha, ST=Benha, C=20
+Serial number: a6170560504ce658
+Valid from: Sat Dec 20 12:01:20 EET 2025 until: Wed May 07 13:01:20 EEST 2053
+Certificate fingerprints:
+	 SHA1: 7E:23:22:4B:17:23:F3:8B:A1:B1:10:55:F2:EE:48:89:AD:43:2D:A6
+	 SHA256: 56:CA:2F:CC:24:8C:02:96:B1:ED:EF:D4:0C:BE:1A:D6:C1:FF:E4:35:93:41:19:5A:9B:9F:27:13:AA:DB:4E:6E
+Signature algorithm name: SHA384withRSA
+Subject Public Key Algorithm: ????-bit RSA key
+Version: ?
+
+Extensions: 
+
+#1: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 35 81 AF 12 00 90 12 ED   5D 5F 13 96 8F 70 F4 AA  5.......]_...p..
+0010: 76 A4 6D DC                                        v.m.
+]
+]
+

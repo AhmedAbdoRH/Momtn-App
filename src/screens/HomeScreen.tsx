@@ -342,6 +342,8 @@ const HomeScreen: React.FC = () => {
   };
 
   const handleCreateGroup = async () => {
+    console.log('handleCreateGroup called with name:', newGroupName);
+    
     if (!newGroupName || newGroupName.trim().length < 2) {
       setAlertDialogProps({
         title: 'خطأ',
@@ -353,23 +355,44 @@ const HomeScreen: React.FC = () => {
       return;
     }
 
+    if (!user) {
+      setAlertDialogProps({
+        title: 'خطأ',
+        message: 'يجب تسجيل الدخول أولاً',
+        type: 'danger',
+        onConfirm: () => setShowAlertDialog(false),
+      });
+      setShowAlertDialog(true);
+      return;
+    }
+
     try {
       setIsLoading(true);
+      console.log('Creating group with name:', newGroupName.trim());
       const group = await GroupsService.createGroup(newGroupName.trim());
+      console.log('Group created successfully:', group);
+      
       if (group) {
-        setUserGroups(prev => [group, ...prev]);
+        // تحديث قائمة المجموعات
+        await loadUserData();
+        
         setSelectedGroup(group);
         setActiveTab('shared');
         setShowCreateGroupModal(false);
         setNewGroupName('');
         setCreatedGroupInfo(group);
         setShowCreatedGroupModal(true);
-        // تم إزالة Alert Dialog هنا لأننا نستخدم Modal مخصص للنجاح
+        
+        // تحديث مفتاح الصور لإعادة تحميلها
+        setPhotosKey(prev => prev + 1);
+      } else {
+        throw new Error('فشل في إنشاء المجموعة - لم يتم إرجاع بيانات المجموعة');
       }
     } catch (error: any) {
+      console.error('Error in handleCreateGroup:', error);
       setAlertDialogProps({
-        title: 'خطأ',
-        message: error.message || 'تعذر إنشاء المجموعة',
+        title: 'خطأ في الإنشاء',
+        message: error?.message || 'تعذر إنشاء المجموعة. تأكد من اتصالك بالإنترنت وحاول مرة أخرى',
         type: 'danger',
         onConfirm: () => setShowAlertDialog(false),
       });
@@ -832,7 +855,14 @@ const HomeScreen: React.FC = () => {
               
               <TouchableOpacity 
                 style={[styles.actionButton, styles.createButton]} 
-                onPress={() => { setShowSharedSpacesModal(false); setShowCreateGroupModal(true); }}
+                onPress={() => {
+                  console.log('Create group button pressed');
+                  setShowSharedSpacesModal(false);
+                  setTimeout(() => {
+                    setShowCreateGroupModal(true);
+                  }, 300);
+                }}
+                activeOpacity={0.7}
               >
                 <View style={styles.buttonContent}>
                   <Text style={styles.buttonText}>إنشاء مساحة جديدة</Text>
@@ -842,7 +872,14 @@ const HomeScreen: React.FC = () => {
               
               <TouchableOpacity 
                 style={[styles.actionButton, styles.joinButton]} 
-                onPress={() => { setShowSharedSpacesModal(false); setShowJoinGroupModal(true); }}
+                onPress={() => {
+                  console.log('Join group button pressed');
+                  setShowSharedSpacesModal(false);
+                  setTimeout(() => {
+                    setShowJoinGroupModal(true);
+                  }, 300);
+                }}
+                activeOpacity={0.7}
               >
                 <View style={styles.buttonContent}>
                   <Text style={styles.buttonText}>الانضمام لمساحة</Text>

@@ -20,11 +20,13 @@ interface AuthContextType {
   signUp: (
     email: string,
     password: string,
+    fullName?: string,
   ) => Promise<{ error: any; user?: SupabaseUser | null }>;
   signIn: (
     email: string,
     password: string,
   ) => Promise<{ error: any; user?: SupabaseUser | null }>;
+  signInWithGoogle: () => Promise<{ error: any; user?: SupabaseUser | null }>;
   signOut: () => Promise<void>;
   loading: boolean;
 }
@@ -55,9 +57,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [user]);
 
   // Sync user data to database
-  const syncUserToDatabase = useCallback(async (authUser: SupabaseUser) => {
+  const syncUserToDatabase = useCallback(async (authUser: SupabaseUser, fullName?: string) => {
     try {
       const displayName =
+        fullName ||
         authUser.user_metadata?.full_name ||
         authUser.email?.split('@')[0] ||
         'مستخدم';
@@ -161,6 +164,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('Initializing auth...');
 
+      // Ensure Google sign-in is configured
+      AuthService.configureGoogleSignIn();
+
       // Get current session
       const {
         data: { session: currentSession },
@@ -257,6 +263,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (
     email: string,
     password: string,
+    fullName?: string,
   ): Promise<{ error: any; user?: SupabaseUser | null }> => {
     try {
       setLoading(true);
@@ -266,7 +273,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password,
         options: {
           data: {
-            full_name: email.split('@')[0],
+            full_name: fullName || email.split('@')[0],
           },
         },
       });
@@ -276,7 +283,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (data.user) {
-        syncUserToDatabase(data.user);
+        syncUserToDatabase(data.user, fullName);
         registerDeviceToken(data.user.id);
       }
 
@@ -319,6 +326,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const signInWithGoogle = async (): Promise<{ error: any; user?: SupabaseUser | null }> => {
+    try {
+      setLoading(true);
+      const googleUser = await AuthService.signInWithGoogle();
+
+      const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) throw sessionError;
+
+      if (newSession?.user) {
+        setSession(newSession);
+        setUser(newSession.user);
+        syncUserToDatabase(newSession.user);
+        registerDeviceToken(newSession.user.id);
+        return { error: null, user: newSession.user };
+      }
+
+      return { error: new Error('User not found after Google Sign-In'), user: null };
+    } catch (error: any) {
+      console.error('Error during Google sign in:', error);
+      return { error, user: null };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       setLoading(true);
@@ -352,6 +385,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     loading,
   };

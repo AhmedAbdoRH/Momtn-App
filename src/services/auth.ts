@@ -13,7 +13,7 @@ export class AuthService {
     try {
       if (GoogleSignin) {
         GoogleSignin.configure({
-          webClientId: '983546382930-jmmissblal0p0pv3suu5nuek5o7btsf4.apps.googleusercontent.com',
+          webClientId: '861205572558-qbv7g5gannkdcuekg3kqspb98k177nju.apps.googleusercontent.com',
           offlineAccess: true,
         });
       }
@@ -25,13 +25,29 @@ export class AuthService {
   // تسجيل الدخول بجوجل
   static async signInWithGoogle(): Promise<User> {
     try {
-      await GoogleSignin.hasPlayServices();
+      console.log('Starting Google Sign-In...');
+
+      // تسجيل خروج أولاً لتنظيف أي بيانات مخبأة
+      try {
+        await GoogleSignin.signOut();
+        console.log('Signed out from previous session');
+      } catch (e) {
+        console.log('No previous session to sign out from');
+      }
+
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      console.log('Play Services available');
+
       const userInfo = await GoogleSignin.signIn();
+      console.log('Google Sign-In successful, userInfo:', JSON.stringify(userInfo));
+
       const idToken = userInfo.data?.idToken;
 
       if (!idToken) {
         throw new Error('لم يتم الحصول على ID Token من جوجل');
       }
+
+      console.log('Got ID Token, signing in with Supabase...');
 
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
@@ -53,6 +69,8 @@ export class AuthService {
       };
     } catch (error: any) {
       console.error('Google Sign-In Error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       throw error;
     }
   }
