@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "861205572558-jdcnkj6g3r5nseruirkjtlsqe03cb560.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.myapp1reactnative",
+            "certificate_hash": "7e23224b1723f38ba1b11055f2ee4889ad432da6"
+          }
+        },
+        {
           "client_id": "861205572558-djr8p23o8r0n65unmjvi5gs3jsceih53.apps.googleusercontent.com",
           "client_type": 3
         }
