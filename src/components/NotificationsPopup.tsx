@@ -11,7 +11,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNotifications } from '../hooks/useNotifications';
 import { AppNotification } from '../services/notifications';
-import { Colors, BorderRadius, Spacing, Typography, ZIndex, Shadows } from '../theme';
+import { Colors, BorderRadius, Spacing, Typography, ZIndex, Shadows } from '../../theme';
 
 interface NotificationsPopupProps {
   userId: string;
