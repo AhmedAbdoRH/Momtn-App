@@ -28,13 +28,13 @@ export const Colors = {
   // Specific UI Glass Elements
   glassInput: 'rgba(255, 255, 255, 0.08)',
   glassInputFocused: 'rgba(255, 255, 255, 0.15)',
-  glassCard: 'rgba(255, 255, 255, 0.05)',
+  glassCard: 'rgba(30, 20, 35, 0.95)',
   glassBorder: 'rgba(255, 255, 255, 0.2)',
   glassHeader: 'rgba(20, 9, 14, 0.8)', // Semi-transparent dark for headers
 
   // Card Backgrounds
-  cardBackground: 'rgba(17, 24, 39, 0.6)',
-  modalBackground: '#2d1b24',
+  cardBackground: 'rgba(17, 24, 39, 0.9)',
+  modalBackground: 'rgba(35, 20, 30, 0.98)',
 
   // Text Colors (ألوان النص)
   textPrimary: '#FFFFFF',
