@@ -158,27 +158,34 @@ const HomeScreen: React.FC = () => {
     onConfirm: () => {},
   });
 
-  const handleNotificationData = async (data: any) => {
-    if (data?.group_id) {
-      console.log('Handling notification for group:', data.group_id);
-      
-      // تأكد من تحميل المجموعات أولاً إذا لم تكن محملة
-      let currentGroups = userGroups;
-      if (currentGroups.length === 0) {
-        currentGroups = await GroupsService.getUserGroups();
-        setUserGroups(currentGroups);
+    const handleNotificationData = async (data: any) => {
+      if (data?.group_id) {
+        console.log('Handling notification for group:', data.group_id);
+        
+        // تأكد من تحميل المجموعات أولاً إذا لم تكن محملة
+        let currentGroups = userGroups;
+        if (currentGroups.length === 0) {
+          currentGroups = await GroupsService.getUserGroups();
+          setUserGroups(currentGroups);
+        }
+  
+        const group = currentGroups.find(g => g.id === data.group_id);
+        if (group) {
+          setSelectedGroup(group);
+          setActiveTab('shared');
+          
+          // إذا كان إشعار رسالة جديدة، افتح المحادثة فوراً
+          if (data.type === 'new_message' || data.type === 'group_chat') {
+            setShowGroupChat(true);
+          } else {
+            // لأنواع الإشعارات الأخرى (صورة، تعليق)، فقط اعرض المجموعة
+            setShowGroupChat(false);
+          }
+        } else {
+          console.log('Group not found in user groups:', data.group_id);
+        }
       }
-
-      const group = currentGroups.find(g => g.id === data.group_id);
-      if (group) {
-        setSelectedGroup(group);
-        setActiveTab('shared');
-        setShowGroupChat(true);
-      } else {
-        console.log('Group not found in user groups:', data.group_id);
-      }
-    }
-  };
+    };
 
   useEffect(() => {
     // التعامل مع الإشعار الذي فتح التطبيق (Cold Start)

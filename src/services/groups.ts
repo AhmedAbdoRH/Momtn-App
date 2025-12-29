@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { NotificationsService } from './notifications';
+import { ProfileService } from './profile';
 
 export interface Group {
   id: string;
@@ -421,6 +423,31 @@ export class GroupsService {
 
       if (!data) {
         throw new Error('فشل في إضافة الصورة');
+      }
+
+      // إرسال إشعارات لأعضاء المجموعة
+      try {
+        const profile = await ProfileService.getProfile(user.id);
+        const senderName = profile?.full_name || user.email?.split('@')[0] || 'مستخدم';
+        
+        // جلب اسم المجموعة
+        const { data: group } = await supabase
+          .from('groups')
+          .select('name')
+          .eq('id', groupId)
+          .single();
+
+        await NotificationsService.notifyGroupMembers(
+          groupId,
+          user.id,
+          senderName,
+          'new_photo',
+          'صورة جديدة في المجموعة',
+          `قام ${senderName} بإضافة صورة جديدة في مجموعة ${group?.name || ''}`,
+          { photo_id: data.id }
+        );
+      } catch (notifyError) {
+        console.warn('Could not send notifications for new photo:', notifyError);
       }
 
       return data;

@@ -16,6 +16,8 @@ import PhotoCard, { Photo, Comment, User } from './PhotoCard';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { supabase } from '../src/services/supabase';
+import { NotificationsService } from '../src/services/notifications';
+import { ProfileService } from '../src/services/profile';
 
 interface PhotoGridProps {
   closeSidebar?: () => void;
@@ -380,20 +382,50 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
 
       if (error) throw error;
 
-      // Update with real comment
-      setPhotos((prev) =>
-        prev.map((p) =>
-          p.id === photoId
-            ? {
-                ...p,
-                comments: (p.comments || []).map((c) =>
-                  c.id === tempId ? { ...tempComment, id: data.id } : c
-                ),
-              }
-            : p
-        )
-      );
-    } catch (error) {
+        // Update with real comment
+        setPhotos((prev) =>
+          prev.map((p) =>
+            p.id === photoId
+              ? {
+                  ...p,
+                  comments: (p.comments || []).map((c) =>
+                    c.id === tempId ? { ...tempComment, id: data.id } : c
+                  ),
+                }
+              : p
+          )
+        );
+
+        // إرسال إشعارات
+        try {
+          const photo = photos.find(p => p.id === photoId);
+          if (photo && photo.group_id) {
+            // إشعار لجميع أعضاء المجموعة
+            await NotificationsService.notifyGroupMembers(
+              photo.group_id,
+              currentUserId,
+              userDisplayName,
+              'comment',
+              'تعليق جديد',
+              `علق ${userDisplayName} على صورة في المجموعة`,
+              { photo_id: photoId, comment_id: data.id }
+            );
+          } else if (photo && photo.user_id !== currentUserId) {
+            // إشعار لصاحب الصورة فقط إذا كانت شخصية
+            await NotificationsService.saveNotification({
+              user_id: photo.user_id,
+              type: 'comment',
+              title: 'تعليق جديد',
+              body: `علق ${userDisplayName} على صورتك`,
+              sender_id: currentUserId,
+              sender_name: userDisplayName,
+              data: { photo_id: photoId, comment_id: data.id }
+            });
+          }
+        } catch (notifyError) {
+          console.warn('Could not send comment notification:', notifyError);
+        }
+      } catch (error) {
       // Revert on error
       setPhotos((prev) =>
         prev.map((p) =>
@@ -406,29 +438,46 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
     }
   };
 
-  const handleLikeComment = async (commentId: string) => {
-    try {
-      const { data: comment } = await supabase
-        .from('comments')
-        .select('likes, liked_by')
-        .eq('id', commentId)
-        .single();
+    const handleLikeComment = async (commentId: string) => {
+      try {
+        const { data: comment } = await supabase
+          .from('comments')
+          .select('likes, liked_by, user_id, content')
+          .eq('id', commentId)
+          .single();
 
-      const likes = comment?.likes || 0;
-      const likedBy = comment?.liked_by?.split(',').filter(Boolean) || [];
-      const hasLiked = likedBy.includes(currentUserId);
+        const likes = comment?.likes || 0;
+        const likedBy = comment?.liked_by?.split(',').filter(Boolean) || [];
+        const hasLiked = likedBy.includes(currentUserId);
 
-      const newLikes = hasLiked ? Math.max(0, likes - 1) : likes + 1;
-      const newLikedBy = hasLiked
-        ? likedBy.filter((id) => id !== currentUserId).join(',')
-        : [...likedBy, currentUserId].join(',');
+        const newLikes = hasLiked ? Math.max(0, likes - 1) : likes + 1;
+        const newLikedBy = hasLiked
+          ? likedBy.filter((id) => id !== currentUserId).join(',')
+          : [...likedBy, currentUserId].join(',');
 
-      await supabase
-        .from('comments')
-        .update({ likes: newLikes, liked_by: newLikedBy })
-        .eq('id', commentId);
+        await supabase
+          .from('comments')
+          .update({ likes: newLikes, liked_by: newLikedBy })
+          .eq('id', commentId);
 
-      // Update local state
+        // إرسال إشعار لصاحب التعليق إذا لم يكن هو من قام بالإعجاب
+        if (!hasLiked && comment && comment.user_id !== currentUserId) {
+          try {
+            await NotificationsService.saveNotification({
+              user_id: comment.user_id,
+              type: 'like',
+              title: 'إعجاب جديد',
+              body: `أعجب ${userDisplayName} بتعليقك: ${comment.content.substring(0, 30)}${comment.content.length > 30 ? '...' : ''}`,
+              sender_id: currentUserId,
+              sender_name: userDisplayName,
+              data: { comment_id: commentId }
+            });
+          } catch (notifyError) {
+            console.warn('Could not send like notification:', notifyError);
+          }
+        }
+
+        // Update local state
       setPhotos((prev) =>
         prev.map((p) => ({
           ...p,
