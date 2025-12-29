@@ -611,7 +611,8 @@ const HomeScreen: React.FC = () => {
                 onNotificationPress={(notification) => {
                   handleNotificationData({
                     ...notification.data,
-                    group_id: notification.group_id
+                    group_id: notification.group_id,
+                    type: notification.type
                   });
                 }}
               />
