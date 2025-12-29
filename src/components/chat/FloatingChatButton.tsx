@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { Colors, Spacing, BorderRadius, Shadows } from '../../../theme';
+import { Colors, Spacing, BorderRadius, Shadows, ZIndex } from '../../../theme';
 
 interface FloatingChatButtonProps {
   onPress: () => void;
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 100,
     alignSelf: 'center',
-    zIndex: 100,
+    zIndex: ZIndex.overlay,
   },
   glowEffect: {
     position: 'absolute',
