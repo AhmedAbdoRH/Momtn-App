@@ -16,9 +16,10 @@ import { Colors, BorderRadius, Spacing, Typography, ZIndex, Shadows } from '../.
 interface NotificationsPopupProps {
   userId: string;
   onClose: () => void;
+  onNotificationPress?: (notification: AppNotification) => void;
 }
 
-const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose }) => {
+const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose, onNotificationPress }) => {
   const {
     notifications,
     unreadCount,
@@ -66,25 +67,39 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose
     const icon = getNotificationIcon(item.type);
     
     return (
-      <TouchableOpacity
-        style={[styles.notificationItem, !item.is_read && styles.unreadItem]}
-        onPress={async () => {
-          if (!item.is_read) await markAsRead(item.id);
-        }}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.iconContainer, { backgroundColor: `${icon.color}20` }]}>
-          <Icon name={icon.name} size={18} color={icon.color} />
-        </View>
-        
-        <View style={styles.contentContainer}>
-          <Text style={styles.notificationTitle}>{item.title}</Text>
-          <Text style={styles.notificationBody} numberOfLines={2}>{item.body}</Text>
-          <Text style={styles.notificationTime}>{formatTime(item.created_at)}</Text>
-        </View>
+      <View style={[styles.notificationWrapper, !item.is_read && styles.unreadWrapper]}>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => deleteNotification(item.id)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Icon name="trash-outline" size={16} color="rgba(255,255,255,0.3)" />
+        </TouchableOpacity>
 
-        {!item.is_read && <View style={styles.unreadDot} />}
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.notificationItem}
+          onPress={async () => {
+            if (!item.is_read) await markAsRead(item.id);
+            if (onNotificationPress) {
+              onNotificationPress(item);
+              onClose();
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={styles.contentContainer}>
+            <Text style={styles.notificationTitle}>{item.title}</Text>
+            <Text style={styles.notificationBody} numberOfLines={2}>{item.body}</Text>
+            <Text style={styles.notificationTime}>{formatTime(item.created_at)}</Text>
+          </View>
+
+          <View style={[styles.iconContainer, { backgroundColor: `${icon.color}20` }]}>
+            <Icon name={icon.name} size={18} color={icon.color} />
+          </View>
+          
+          {!item.is_read && <View style={styles.unreadDot} />}
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -130,8 +145,6 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose
   );
 };
 
-const { width } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
@@ -173,15 +186,27 @@ const styles = StyleSheet.create({
   listContent: {
     padding: Spacing.sm,
   },
-  notificationItem: {
-    flexDirection: 'row-reverse',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.sm,
+  notificationWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: Spacing.xs,
     backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: BorderRadius.sm,
+    paddingLeft: Spacing.sm,
   },
-  unreadItem: {
+  unreadWrapper: {
     backgroundColor: 'rgba(234,56,76,0.05)',
+  },
+  deleteButton: {
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationItem: {
+    flex: 1,
+    flexDirection: 'row-reverse',
+    padding: Spacing.sm,
+    paddingLeft: Spacing.xs,
   },
   iconContainer: {
     width: 36,
@@ -218,7 +243,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ea384c',
     position: 'absolute',
     top: 10,
-    left: 10,
+    right: 5,
   },
   centerContainer: {
     padding: 40,

@@ -598,9 +598,15 @@ const HomeScreen: React.FC = () => {
               activeOpacity={1} 
               onPress={() => setShowNotifications(false)}
             >
-              <NotificationsPopup 
-                userId={user?.id || ''} 
-                onClose={() => setShowNotifications(false)} 
+              <NotificationsPopup
+                userId={user?.id || ''}
+                onClose={() => setShowNotifications(false)}
+                onNotificationPress={(notification) => {
+                  handleNotificationData({
+                    ...notification.data,
+                    group_id: notification.group_id
+                  });
+                }}
               />
             </TouchableOpacity>
           )}
