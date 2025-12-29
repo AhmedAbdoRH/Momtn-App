@@ -753,21 +753,108 @@ const HomeScreen: React.FC = () => {
           )}
 
           {/* Floating Add Button (FAB) - يظهر دائماً في أسفل اليسار */}
-          {(activeTab === 'personal' || (activeTab === 'shared' && selectedGroup)) && (
-            <TouchableOpacity 
-              style={styles.fabButton} 
-              onPress={() => setShowCreateDialog(true)}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#ea384c', '#d94550', '#c73e48']}
-                style={styles.fabGradient}
+            {(activeTab === 'personal' || (activeTab === 'shared' && selectedGroup)) && (
+              <TouchableOpacity 
+                style={styles.fabButton} 
+                onPress={() => setShowCreateDialog(true)}
+                activeOpacity={0.8}
               >
-                <Icon name="add" size={30} color="#FFFFFF" />
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-        </SafeAreaView>
+                <LinearGradient
+                  colors={['#ea384c', '#d94550', '#c73e48']}
+                  style={styles.fabGradient}
+                >
+                  <Icon name="add" size={30} color="#FFFFFF" />
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {/* Sidebar Drawer */}
+            <Animated.View 
+              style={[
+                styles.sidebarDrawer,
+                { 
+                  width: drawerWidth,
+                  transform: [{ translateX: drawerAnimation }] 
+                }
+              ]}
+            >
+              <View style={styles.sidebarHeader}>
+                <View style={styles.centeredLogo}>
+                  <HeartLogo size="small" animated={false} />
+                </View>
+              </View>
+
+              <ScrollView style={styles.sidebarContent}>
+                <View style={styles.sidebarUserSection}>
+                  <View style={styles.sidebarUserInfo}>
+                    <Text style={styles.sidebarUserName}>
+                      {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                    </Text>
+                    <Text style={styles.sidebarUserEmail}>{user?.email}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.sidebarDivider} />
+                
+                <View style={styles.sidebarAlbumsSection}>
+                  <Text style={styles.sidebarSectionTitle}>
+                    {activeTab === 'personal' ? 'ألبوماتي الشخصية' : `ألبومات ${selectedGroup?.name || 'المساحة المشتركة'}`}
+                  </Text>
+                  
+                  {loadingAlbums ? (
+                    <ActivityIndicator color={Colors.primary} size="small" style={{ marginVertical: 20 }} />
+                  ) : albums.length > 0 ? (
+                    albums.map((album, index) => (
+                      <TouchableOpacity 
+                        key={album.id} 
+                        style={styles.sidebarAlbumItem}
+                        onPress={() => {
+                          toggleDrawer(false);
+                          (navigation.navigate as any)('Main', { selectedHashtag: album.name });
+                        }}
+                      >
+                        <View style={styles.sidebarAlbumIndicator} />
+                        <Text style={styles.sidebarAlbumText}>{album.name}</Text>
+                        <Icon name="chevron-back" size={14} color="rgba(255,255,255,0.3)" />
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <Text style={styles.noAlbumsSidebarText}>لا توجد ألبومات حالياً</Text>
+                  )}
+                </View>
+
+                <View style={styles.sidebarDivider} />
+
+                <TouchableOpacity 
+                  style={styles.sidebarItem}
+                  onPress={() => {
+                    toggleDrawer(false);
+                    navigation.navigate('Profile' as never);
+                  }}
+                >
+                  <Icon name="person-outline" size={22} color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.sidebarItemText}>إعدادات عامة</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.sidebarLogoutButton}
+                  onPress={handleLogout}
+                >
+                  <Icon name="exit-outline" size={22} color="#ea384c" />
+                  <Text style={styles.sidebarLogoutText}>تسجيل الخروج</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </Animated.View>
+
+            {/* Backdrop when drawer is open */}
+            {isDrawerOpen && (
+              <TouchableOpacity 
+                activeOpacity={1}
+                style={styles.drawerBackdrop}
+                onPress={() => toggleDrawer(false)}
+              />
+            )}
+          </SafeAreaView>
       </LinearGradient>
 
       <CreateNewDialog
