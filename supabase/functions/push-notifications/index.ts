@@ -84,30 +84,34 @@ serve(async (req) => {
     const results = [];
     for (const t of tokens) {
       try {
+        const title = record.title || 'إشعار جديد';
+        const body = record.body || '';
+        const type = String(record.type || 'new_photo');
+        const groupId = String(record.group_id || '');
+
+        const baseData: Record<string, string> = {
+          title: String(title),
+          body: String(body),
+          type,
+          group_id: groupId,
+          notification_id: String(record.id || ''),
+        };
+
+        const extraData = Object.keys(record.data || {}).reduce((acc, key) => {
+          acc[key] = String(record.data[key]);
+          return acc;
+        }, {} as Record<string, string>);
+
         const fcmBody = {
           message: {
             token: t.token,
-            notification: {
-              title: record.title || 'إشعار جديد',
-              body: record.body || '',
-            },
             data: {
-              title: record.title || 'إشعار جديد',
-              body: record.body || '',
-              type: 'group_chat',
-              group_id: String(record.group_id || ''),
-              ...Object.keys(record.data || {}).reduce((acc, key) => {
-                acc[key] = String(record.data[key]);
-                return acc;
-              }, {} as any)
+              ...baseData,
+              ...extraData,
             },
             android: {
-              priority: 'high',
-              notification: {
-                sound: 'default',
-                channel_id: 'default_channel'
-              }
-            }
+              priority: 'HIGH',
+            },
           }
         };
 

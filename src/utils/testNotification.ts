@@ -94,7 +94,7 @@ export class TestNotification {
     try {
       console.log('=== Creating Test Notification in DB ===');
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('notifications')
         .insert({
           user_id: userId,

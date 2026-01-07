@@ -13,6 +13,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../components/auth/AuthProvider';
+import { useToast } from '../providers/ToastProvider';
 
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { supabase } from '../services/supabase';
@@ -31,6 +32,7 @@ type SettingsScreenRouteProp = RouteProp<
 
 const SettingsScreen: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { showToast } = useToast();
   const navigation = useNavigation();
   const route = useRoute<SettingsScreenRouteProp>();
 
@@ -96,25 +98,18 @@ const SettingsScreen: React.FC = () => {
 
   const handleTestNotifications = async () => {
     if (!user?.id) {
-      Alert.alert('خطأ', 'يجب تسجيل الدخول أولاً');
+      showToast({ message: 'يجب تسجيل الدخول أولاً', type: 'error' });
       return;
     }
 
-    Alert.alert('اختبار الإشعارات', 'اختر نوع الاختبار:', [
-      {
-        text: 'إشعار محلي فقط',
-        onPress: () => TestNotification.sendLocalTestNotification(),
-      },
-      {
-        text: 'اختبار شامل',
-        onPress: () => TestNotification.runAllTests(user.id),
-      },
-      {
-        text: 'إنشاء إشعار في DB',
-        onPress: () => TestNotification.createTestNotificationInDB(user.id),
-      },
-      { text: 'إلغاء', style: 'cancel' },
-    ]);
+    try {
+      showToast({ message: 'جاري إرسال إشعار تجريبي...', type: 'info' });
+      await TestNotification.sendTestNotification(user.id);
+      showToast({ message: 'تم إرسال الإشعار بنجاح! تحقق من هاتفك.', type: 'success' });
+    } catch (error: any) {
+      console.error('Error testing notifications:', error);
+      showToast({ message: 'فشل إرسال الإشعار: ' + (error.message || 'خطأ غير معروف'), type: 'error' });
+    }
   };
 
   const settingsOptions = [

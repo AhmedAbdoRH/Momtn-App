@@ -17,7 +17,6 @@ import {
   BorderRadius, 
   ComponentSizes,
   ZIndex,
-  Shadows 
 } from '../theme';
 
 interface BottomNavigationBarProps {
@@ -53,7 +52,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
         useNativeDriver: false,
       }),
     ]).start();
-  }, [activeTab]);
+  }, [activeTab, indicatorPosition, personalScale, sharedScale]);
 
   const handleTabPress = (tab: 'personal' | 'shared') => {
     if (tab !== activeTab) {

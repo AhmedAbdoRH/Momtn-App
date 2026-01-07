@@ -6,6 +6,7 @@ export { default as Greeting } from './Greeting.tsx';
 export { default as BottomNavigationBar } from './BottomNavigationBar.tsx';
 export { default as PhotoGrid } from './PhotoGrid';
 export { default as SettingsModal } from './SettingsModal';
+export { default as ToastNotification } from './ToastNotification';
 
 // Export types
 export type { Photo, Comment, User } from './PhotoCard.tsx';

@@ -68,7 +68,7 @@ const FloatingChatButton: React.FC<FloatingChatButtonProps> = ({
       pulseAnimation.stop();
       glowAnimation.stop();
     };
-  }, []);
+  }, [glowAnim, pulseAnim]);
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {

@@ -5,7 +5,7 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
-    "lint": "eslint .",
+    "lint": "eslint src components index.js App.tsx",
     "start": "react-native start",
     "dev": "react-native start",
     "test": "jest"
@@ -21,6 +21,7 @@
     "@react-navigation/stack": "^7.4.8",
     "@supabase/supabase-js": "^2.50.2",
     "@tanstack/react-query": "^5.56.2",
+    "base64-arraybuffer": "^1.0.2",
     "nativewind": "^4.0.36",
     "react": "19.1.0",
     "react-native": "0.81.4",
@@ -56,7 +57,7 @@
     "prettier": "2.8.8",
     "react-test-renderer": "19.1.0",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.8.3"
+    "typescript": "5.5.4"
   },
   "engines": {
     "node": ">=20"

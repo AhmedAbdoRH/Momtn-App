@@ -13,11 +13,11 @@ import {
   Image,
 } from 'react-native';
 import PhotoCard, { Photo, Comment, User } from './PhotoCard';
+import { useToast } from '../src/providers/ToastProvider';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { supabase } from '../src/services/supabase';
 import { NotificationsService } from '../src/services/notifications';
-import { ProfileService } from '../src/services/profile';
 
 interface PhotoGridProps {
   closeSidebar?: () => void;
@@ -28,6 +28,10 @@ interface PhotoGridProps {
   embedded?: boolean;
   navigation?: any;
   initialHashtag?: string | null;
+  initialPhotoId?: string | null;
+  initialCommentId?: string | null;
+  initialParentCommentId?: string | null;
+  onScrollRequest?: (y: number) => void;
 }
 
 const PhotoGrid: React.FC<PhotoGridProps> = ({
@@ -36,7 +40,13 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
   currentUser,
   embedded = false,
   initialHashtag = null,
+  initialPhotoId = null,
+  initialCommentId = null,
+  initialParentCommentId = null,
+  onScrollRequest,
 }) => {
+  const { showToast } = useToast();
+  const photoPositions = useRef<Record<string, number>>({});
   // Photo management state
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [filteredPhotos, setFilteredPhotos] = useState<Photo[]>([]);
@@ -65,77 +75,32 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // Scroll to initial photo
+  useEffect(() => {
+    if (initialPhotoId && filteredPhotos.length > 0 && onScrollRequest) {
+      // Check if we have the position
+      const checkPosition = () => {
+        const y = photoPositions.current[initialPhotoId];
+        if (y !== undefined) {
+          console.log('Scrolling to photo:', initialPhotoId, 'at y:', y);
+          onScrollRequest(y);
+        } else {
+          // Retry shortly if layout hasn't happened yet
+          setTimeout(checkPosition, 100);
+        }
+      };
+      // Wait a bit for layout
+      setTimeout(checkPosition, 100);
+    }
+  }, [initialPhotoId, filteredPhotos, onScrollRequest]);
+
   // User display name
   const userDisplayName =
     currentUser?.full_name ||
     currentUser?.email?.split('@')[0] ||
     'مستخدم';
 
-  // Check tutorial status
-  const checkTutorialStatus = useCallback(async () => {
-    if (!currentUserId) return;
-    try {
-      const { data } = await supabase
-        .from('users')
-        .select('tutorial_dismissed')
-        .eq('id', currentUserId)
-        .single();
-      setTutorialDismissed(data?.tutorial_dismissed || false);
-    } catch (error) {
-      console.error('Error checking tutorial:', error);
-    }
-  }, [currentUserId]);
-
-  // Load photos
-  useEffect(() => {
-    if (currentUserId) {
-      checkTutorialStatus();
-      fetchPhotos();
-    } else {
-      setLoading(false);
-    }
-  }, [currentUserId, selectedGroupId]);
-
-  // Apply filters when photos or filter changes
-  useEffect(() => {
-    applyFilters();
-  }, [photos, selectedHashtag, sortBy]);
-
-  // Extract hashtags
-  useEffect(() => {
-    const tags = new Set<string>();
-    photos.forEach((photo) => {
-      photo.hashtags?.forEach((tag) => {
-        if (tag?.trim()) tags.add(tag.trim());
-      });
-    });
-    setAllHashtags(tags);
-  }, [photos]);
-
-  // Animate when photos load
-  useEffect(() => {
-    if (hasPhotosLoadedOnce && photos.length > 0) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [hasPhotosLoadedOnce, photos.length]);
-
-  // Show tutorial for first photo
-  useEffect(() => {
-    if (
-      hasPhotosLoadedOnce &&
-      photos.length === 1 &&
-      !tutorialDismissed &&
-      !selectedGroupId
-    ) {
-      setTimeout(() => setShowFirstTimeModal(true), 500);
-    }
-  }, [hasPhotosLoadedOnce, photos.length, tutorialDismissed, selectedGroupId]);
-
-  const fetchPhotos = async (): Promise<void> => {
+  const fetchPhotos = useCallback(async (): Promise<void> => {
     if (!currentUserId) return;
 
     setLoading(true);
@@ -231,6 +196,7 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
           ownerId: p.user_id,
           photoOwnerId: p.user_id,
           user_id: p.user_id,
+          group_id: p.group_id || null,
           userEmail: userData?.email,
           userDisplayName: userData?.full_name,
           comments: commentsMap.get(p.id) || [],
@@ -244,14 +210,14 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
       setHasPhotosLoadedOnce(true);
     } catch (error) {
       console.error('Error fetching photos:', error);
-      Alert.alert('خطأ', 'لم نتمكن من تحميل الصور');
+      showToast({ message: 'لم نتمكن من تحميل الصور، يرجى المحاولة لاحقاً', type: 'error' });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [currentUserId, selectedGroupId]);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...photos];
 
     if (selectedHashtag) {
@@ -278,7 +244,71 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
     });
 
     setFilteredPhotos(filtered);
-  };
+  }, [photos, selectedHashtag, sortBy]);
+
+  // Check tutorial status
+  const checkTutorialStatus = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('tutorial_dismissed')
+        .eq('id', currentUserId)
+        .single();
+      setTutorialDismissed(data?.tutorial_dismissed || false);
+    } catch (error) {
+      console.error('Error checking tutorial:', error);
+    }
+  }, [currentUserId]);
+
+  // Load photos
+  useEffect(() => {
+    if (currentUserId) {
+      checkTutorialStatus();
+      fetchPhotos();
+    } else {
+      setLoading(false);
+    }
+  }, [currentUserId, selectedGroupId, checkTutorialStatus, fetchPhotos]);
+
+  // Apply filters when photos or filter changes
+  useEffect(() => {
+    applyFilters();
+  }, [photos, selectedHashtag, sortBy, applyFilters]);
+
+  // Extract hashtags
+  useEffect(() => {
+    const tags = new Set<string>();
+    photos.forEach((photo) => {
+      photo.hashtags?.forEach((tag) => {
+        if (tag?.trim()) tags.add(tag.trim());
+      });
+    });
+    setAllHashtags(tags);
+  }, [photos]);
+
+  // Animate when photos load
+  useEffect(() => {
+    if (hasPhotosLoadedOnce && photos.length > 0) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [hasPhotosLoadedOnce, photos.length, fadeAnim]);
+
+  // Show tutorial for first photo
+  useEffect(() => {
+    if (
+      hasPhotosLoadedOnce &&
+      photos.length === 1 &&
+      !tutorialDismissed &&
+      !selectedGroupId
+    ) {
+      setTimeout(() => setShowFirstTimeModal(true), 500);
+    }
+  }, [hasPhotosLoadedOnce, photos.length, tutorialDismissed, selectedGroupId]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -291,13 +321,38 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
 
     const newLikes = photo.likes + 1;
 
-    // Optimistic update
     setPhotos((prev) =>
       prev.map((p) => (p.id === photoId ? { ...p, likes: newLikes } : p))
     );
 
     try {
       await supabase.from('photos').update({ likes: newLikes }).eq('id', photoId);
+      try {
+        const updatedPhoto = photos.find((p) => p.id === photoId);
+        if (
+          updatedPhoto &&
+          updatedPhoto.user_id &&
+          updatedPhoto.user_id !== currentUserId
+        ) {
+          const notificationData: any = {
+            user_id: updatedPhoto.user_id,
+            type: 'like' as const,
+            title: 'إعجاب جديد',
+            body: `أعجب ${userDisplayName} بصورتك`,
+            sender_id: currentUserId,
+            sender_name: userDisplayName,
+            data: { photo_id: photoId },
+          };
+
+          if (updatedPhoto.group_id) {
+            notificationData.group_id = updatedPhoto.group_id;
+          }
+
+          await NotificationsService.saveNotification(notificationData);
+        }
+      } catch (notifyError) {
+        console.warn('Could not send like photo notification:', notifyError);
+      }
     } catch (error) {
       console.error('Error liking:', error);
       fetchPhotos();
@@ -314,8 +369,9 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
           try {
             await supabase.from('photos').delete().eq('id', photoId);
             setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+            showToast({ message: 'تم حذف الصورة بنجاح', type: 'success' });
           } catch (error) {
-            Alert.alert('خطأ', 'حدث خطأ أثناء الحذف');
+            showToast({ message: 'حدث خطأ أثناء الحذف', type: 'error' });
           }
         },
       },
@@ -337,7 +393,7 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
         prev.map((p) => (p.id === photoId ? { ...p, caption, hashtags } : p))
       );
     } catch (error) {
-      Alert.alert('خطأ', 'حدث خطأ أثناء التحديث');
+      showToast({ message: 'حدث خطأ أثناء التحديث', type: 'error' });
     }
   };
 
@@ -345,11 +401,12 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
     if (!currentUserId || !content.trim()) return;
 
     const tempId = `temp-${Date.now()}`;
+    const rawContent = content.trim();
     const tempComment: Comment = {
       id: tempId,
       photo_id: photoId,
       user_id: currentUserId,
-      content: content.trim(),
+      content: rawContent,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       likes: 0,
@@ -375,57 +432,91 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
         .insert({
           photo_id: photoId,
           user_id: currentUserId,
-          content: content.trim(),
+          content: rawContent,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-        // Update with real comment
-        setPhotos((prev) =>
-          prev.map((p) =>
-            p.id === photoId
-              ? {
-                  ...p,
-                  comments: (p.comments || []).map((c) =>
-                    c.id === tempId ? { ...tempComment, id: data.id } : c
-                  ),
-                }
-              : p
-          )
-        );
+      // Update with real comment
+      setPhotos((prev) =>
+        prev.map((p) =>
+          p.id === photoId
+            ? {
+              ...p,
+              comments: (p.comments || []).map((c) =>
+                c.id === tempId ? { ...tempComment, id: data.id } : c
+              ),
+            }
+            : p
+        )
+      );
 
-        // إرسال إشعارات
-        try {
-          const photo = photos.find(p => p.id === photoId);
-          if (photo && photo.group_id) {
-            // إشعار لجميع أعضاء المجموعة
-            await NotificationsService.notifyGroupMembers(
-              photo.group_id,
-              currentUserId,
-              userDisplayName,
-              'comment',
-              'تعليق جديد',
-              `علق ${userDisplayName} على صورة في المجموعة`,
-              { photo_id: photoId, comment_id: data.id }
-            );
-          } else if (photo && photo.user_id !== currentUserId) {
-            // إشعار لصاحب الصورة فقط إذا كانت شخصية
-            await NotificationsService.saveNotification({
-              user_id: photo.user_id,
-              type: 'comment',
-              title: 'تعليق جديد',
-              body: `علق ${userDisplayName} على صورتك`,
-              sender_id: currentUserId,
-              sender_name: userDisplayName,
-              data: { photo_id: photoId, comment_id: data.id }
-            });
-          }
-        } catch (notifyError) {
-          console.warn('Could not send comment notification:', notifyError);
+      // إرسال إشعارات
+      try {
+        const photo = photos.find(p => p.id === photoId);
+        if (photo && photo.group_id) {
+          await NotificationsService.notifyGroupMembers(
+            photo.group_id!,
+            currentUserId,
+            userDisplayName,
+            'comment',
+            'تعليق جديد',
+            `علق ${userDisplayName} على صورة في المجموعة`,
+            { photo_id: photoId, comment_id: data.id }
+          );
+        } else if (photo && photo.user_id && photo.user_id !== currentUserId) {
+          await NotificationsService.saveNotification({
+            user_id: photo.user_id,
+            type: 'comment',
+            title: 'تعليق جديد',
+            body: `علق ${userDisplayName} على صورتك`,
+            sender_id: currentUserId,
+            sender_name: userDisplayName,
+            data: { photo_id: photoId, comment_id: data.id }
+          });
         }
-      } catch (error) {
+
+        if (rawContent.startsWith('@reply|')) {
+          const parts = rawContent.split('|');
+          if (parts.length >= 4) {
+            const parentCommentId = parts[1];
+            try {
+              const { data: parentComment } = await supabase
+                .from('comments')
+                .select('id, user_id, photo_id')
+                .eq('id', parentCommentId)
+                .single();
+
+              if (
+                parentComment &&
+                parentComment.user_id &&
+                parentComment.user_id !== currentUserId
+              ) {
+                await NotificationsService.saveNotification({
+                  user_id: parentComment.user_id,
+                  type: 'comment',
+                  title: 'رد جديد على تعليقك',
+                  body: `${userDisplayName} رد على تعليقك`,
+                  sender_id: currentUserId,
+                  sender_name: userDisplayName,
+                  data: {
+                    photo_id: photoId,
+                    comment_id: data.id,
+                    parent_comment_id: parentComment.id,
+                  },
+                });
+              }
+            } catch (replyNotifyError) {
+              console.warn('Could not send reply notification:', replyNotifyError);
+            }
+          }
+        }
+      } catch (notifyError) {
+        console.warn('Could not send comment notification:', notifyError);
+      }
+    } catch (error) {
       // Revert on error
       setPhotos((prev) =>
         prev.map((p) =>
@@ -434,50 +525,50 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
             : p
         )
       );
-      Alert.alert('خطأ', 'حدث خطأ أثناء إضافة التعليق');
+      showToast({ message: 'حدث خطأ أثناء إضافة التعليق', type: 'error' });
     }
   };
 
-    const handleLikeComment = async (commentId: string) => {
-      try {
-        const { data: comment } = await supabase
-          .from('comments')
-          .select('likes, liked_by, user_id, content')
-          .eq('id', commentId)
-          .single();
+  const handleLikeComment = async (commentId: string) => {
+    try {
+      const { data: comment } = await supabase
+        .from('comments')
+        .select('likes, liked_by, user_id, content')
+        .eq('id', commentId)
+        .single();
 
-        const likes = comment?.likes || 0;
-        const likedBy = comment?.liked_by?.split(',').filter(Boolean) || [];
-        const hasLiked = likedBy.includes(currentUserId);
+      const likes = comment?.likes || 0;
+      const likedBy = comment?.liked_by?.split(',').filter(Boolean) || [];
+      const hasLiked = likedBy.includes(currentUserId);
 
-        const newLikes = hasLiked ? Math.max(0, likes - 1) : likes + 1;
-        const newLikedBy = hasLiked
-          ? likedBy.filter((id) => id !== currentUserId).join(',')
-          : [...likedBy, currentUserId].join(',');
+      const newLikes = hasLiked ? Math.max(0, likes - 1) : likes + 1;
+      const newLikedBy = hasLiked
+        ? likedBy.filter((id) => id !== currentUserId).join(',')
+        : [...likedBy, currentUserId].join(',');
 
-        await supabase
-          .from('comments')
-          .update({ likes: newLikes, liked_by: newLikedBy })
-          .eq('id', commentId);
+      await supabase
+        .from('comments')
+        .update({ likes: newLikes, liked_by: newLikedBy })
+        .eq('id', commentId);
 
-        // إرسال إشعار لصاحب التعليق إذا لم يكن هو من قام بالإعجاب
-        if (!hasLiked && comment && comment.user_id !== currentUserId) {
-          try {
-            await NotificationsService.saveNotification({
-              user_id: comment.user_id,
-              type: 'like',
-              title: 'إعجاب جديد',
-              body: `أعجب ${userDisplayName} بتعليقك: ${comment.content.substring(0, 30)}${comment.content.length > 30 ? '...' : ''}`,
-              sender_id: currentUserId,
-              sender_name: userDisplayName,
-              data: { comment_id: commentId }
-            });
-          } catch (notifyError) {
-            console.warn('Could not send like notification:', notifyError);
-          }
+      // إرسال إشعار لصاحب التعليق إذا لم يكن هو من قام بالإعجاب
+      if (!hasLiked && comment && comment.user_id !== currentUserId) {
+        try {
+          await NotificationsService.saveNotification({
+            user_id: comment.user_id,
+            type: 'like',
+            title: 'إعجاب جديد',
+            body: `أعجب ${userDisplayName} بتعليقك: ${comment.content.substring(0, 30)}${comment.content.length > 30 ? '...' : ''}`,
+            sender_id: currentUserId,
+            sender_name: userDisplayName,
+            data: { comment_id: commentId }
+          });
+        } catch (notifyError) {
+          console.warn('Could not send like notification:', notifyError);
         }
+      }
 
-        // Update local state
+      // Update local state
       setPhotos((prev) =>
         prev.map((p) => ({
           ...p,
@@ -503,7 +594,7 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
         }))
       );
     } catch (error) {
-      Alert.alert('خطأ', 'حدث خطأ أثناء حذف التعليق');
+      showToast({ message: 'حدث خطأ أثناء حذف التعليق', type: 'error' });
     }
   };
 
@@ -687,25 +778,36 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
   const renderPhotos = () => (
     <Animated.View style={[styles.photosContainer, { opacity: fadeAnim }]}>
       {filteredPhotos.map((photo) => (
-        <PhotoCard
+        <View
           key={photo.id}
-          photo={photo}
-          onLike={() => handleLike(photo.id)}
-          onDelete={() => handleDelete(photo.id)}
-          onUpdateCaption={(caption, hashtags) =>
-            handleUpdateCaption(photo.id, caption, hashtags)
-          }
-          onAddComment={(content) => handleAddComment(photo.id, content)}
-          onLikeComment={handleLikeComment}
-          onDeleteComment={handleDeleteComment}
-          currentUserId={currentUserId}
-          currentUser={currentUser}
-          isGroupPhoto={!!selectedGroupId}
-          selectedGroupId={selectedGroupId}
-        />
+          onLayout={(event) => {
+            photoPositions.current[photo.id] = event.nativeEvent.layout.y;
+          }}
+        >
+          <PhotoCard
+            photo={photo}
+            onLike={() => handleLike(photo.id)}
+            onDelete={() => handleDelete(photo.id)}
+            onUpdateCaption={(caption, hashtags) =>
+              handleUpdateCaption(photo.id, caption, hashtags)
+            }
+            onAddComment={(content) => handleAddComment(photo.id, content)}
+            onLikeComment={handleLikeComment}
+            onDeleteComment={handleDeleteComment}
+            currentUserId={currentUserId}
+            currentUser={currentUser}
+            isGroupPhoto={!!selectedGroupId}
+            selectedGroupId={selectedGroupId}
+            autoOpenComments={initialPhotoId === photo.id && !!initialCommentId}
+            initialCommentId={initialPhotoId === photo.id ? initialCommentId : null}
+            initialParentCommentId={initialPhotoId === photo.id ? initialParentCommentId : null}
+          />
+        </View>
       ))}
     </Animated.View>
   );
+
+
 
   return (
     <>

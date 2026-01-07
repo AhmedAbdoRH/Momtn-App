@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Image, StyleSheet, Animated, Easing } from 'react-native';
-import { Colors, ComponentSizes, Spacing } from '../theme';
+import { View, StyleSheet, Animated, Easing } from 'react-native';
+import { ComponentSizes, Spacing } from '../theme';
 
 interface HeartLogoProps {
   size?: 'small' | 'medium' | 'large';

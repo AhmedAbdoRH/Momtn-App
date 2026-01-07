@@ -19,18 +19,14 @@ BEGIN
         ),
         body := jsonb_build_object(
           'to', token_record.token,
-          'notification', jsonb_build_object(
-            'title', NEW.title,
-            'body', NEW.body,
-            'sound', 'default',
-            'android_channel_id', 'momtn-notifications'
-          ),
           'priority', 'high',
           'content_available', true,
           'data', COALESCE(NEW.data, '{}'::jsonb) || jsonb_build_object(
             'notification_id', NEW.id,
             'title', NEW.title,
-            'body', NEW.body
+            'body', NEW.body,
+            'group_id', NEW.group_id,
+            'type', NEW.type
           )
         )
       );

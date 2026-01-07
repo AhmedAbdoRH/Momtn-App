@@ -19,7 +19,7 @@ const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 2; // 2 columns with 16px margins
 
 const PhotoCard: React.FC<PhotoCardProps> = ({
-  id,
+  id: _id,
   content,
   author,
   timestamp,

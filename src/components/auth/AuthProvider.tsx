@@ -8,6 +8,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../services/supabase';
 import { AuthService } from '../../services/auth';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
@@ -28,6 +29,7 @@ interface AuthContextType {
   ) => Promise<{ error: any; user?: SupabaseUser | null }>;
   signInWithGoogle: () => Promise<{ error: any; user?: SupabaseUser | null }>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   loading: boolean;
 }
 
@@ -111,6 +113,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const platform = Platform.OS;
 
+        await supabase
+          .from('device_tokens')
+          .delete()
+          .eq('user_id', userId)
+          .eq('platform', platform)
+          .neq('token', token);
+
         const { error } = await supabase.from('device_tokens').upsert(
           {
             user_id: userId,
@@ -140,23 +149,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = messaging().onMessage(async remoteMessage => {
       console.log('Foreground message received:', remoteMessage);
 
+      const data = remoteMessage.data || {};
+      const notificationId = data.notification_id || data.notificationId;
+      const messageId =
+        (data.messageId as string) || (data.message_id as string);
+      const photoId = (data.photo_id as string) || (data.photoId as string);
+      const type = data.type as string | undefined;
+      const dedupeKeyValue =
+        (data.dedupe_key as string) ||
+        (data.dedupeKey as string) ||
+        messageId ||
+        photoId ||
+        (notificationId as string);
+
+      if (dedupeKeyValue) {
+        try {
+          const dedupeKey = `@push_dedupe_${type || 'unknown'}_${dedupeKeyValue}`;
+          const alreadyShown = await AsyncStorage.getItem(dedupeKey);
+
+          if (alreadyShown) {
+            console.log(
+              'Skipping duplicate foreground push notification:',
+              dedupeKeyValue,
+            );
+            return;
+          }
+
+          await AsyncStorage.setItem(dedupeKey, '1');
+        } catch (error) {
+          console.error('Error in foreground de-duplication:', error);
+        }
+      }
+
       const title =
         remoteMessage.notification?.title ||
-        (remoteMessage.data?.title as string) ||
+        (data.title as string) ||
         'إشعار جديد';
       const body =
-        remoteMessage.notification?.body ||
-        (remoteMessage.data?.body as string) ||
-        '';
+        remoteMessage.notification?.body || (data.body as string) || '';
 
       await NotificationsService.showLocalNotification(
         title,
         body,
-        remoteMessage.data,
+        data,
       );
     });
 
     return unsubscribe;
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const [{ data: userData }, { data: sessionData }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.auth.getSession(),
+    ]);
+
+    setUser(userData.user ?? null);
+    setSession(sessionData.session ?? null);
   }, []);
 
   // Initialize auth
@@ -187,14 +236,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Initialize notifications
       await NotificationsService.initialize();
-
-      // Show welcome notification
-      if (currentSession?.user) {
-        NotificationsService.showLocalNotification(
-          'مرحباً بك في ممتن',
-          'تم تفعيل نظام الإشعارات بنجاح',
-        );
-      }
     } catch (error) {
       console.error('Error initializing auth:', error);
     } finally {
@@ -329,7 +370,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signInWithGoogle = async (): Promise<{ error: any; user?: SupabaseUser | null }> => {
     try {
       setLoading(true);
-      const googleUser = await AuthService.signInWithGoogle();
+      await AuthService.signInWithGoogle();
 
       const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession();
 
@@ -387,6 +428,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signIn,
     signInWithGoogle,
     signOut,
+    refreshUser,
     loading,
   };
 

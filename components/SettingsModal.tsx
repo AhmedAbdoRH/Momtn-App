@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,38 +7,30 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  Dimensions,
   Alert,
   Platform,
 } from 'react-native';
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../theme';
+import { Colors, Spacing, Typography, BorderRadius } from '../theme';
+import { useToast } from '../src/providers/ToastProvider';
 import { useAuth } from '../src/components/auth/AuthProvider';
 import { supabase } from '../src/services/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const { width, height } = Dimensions.get('window');
+import { ProfileService } from '../src/services/profile';
 
 interface SettingsModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
-import { ProfileService } from '../src/services/profile';
-
 const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
   const { user, refreshUser } = useAuth();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('general');
   const [greetingMessage, setGreetingMessage] = useState('لحظاتك السعيدة، والنعم الجميلة في حياتك ✨');
   const [displayName, setDisplayName] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  useEffect(() => {
-    if (visible && user) {
-      loadProfileData();
-    }
-  }, [visible, user]);
-
-  const loadProfileData = async () => {
+  const loadProfileData = useCallback(async () => {
     if (!user?.id) return;
     try {
       const profile = await ProfileService.getProfile(user.id);
@@ -57,11 +49,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     } catch (e) {
       console.warn('Could not load profile:', e);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (visible && user) {
+      loadProfileData();
+    }
+  }, [visible, user, loadProfileData]);
 
   const handleSaveSettings = async () => {
     if (!displayName.trim()) {
-      Alert.alert('خطأ', 'يجب كتابة الاسم');
+      showToast({ message: 'يجب كتابة الاسم', type: 'warning' });
       return;
     }
 
@@ -75,26 +73,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
         });
 
         // Also update Auth metadata for consistency
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { 
-          full_name: displayName.trim(),
-          greeting_message: greetingMessage.trim()
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: { 
+            full_name: displayName.trim(),
+            greeting_message: greetingMessage.trim()
+          }
+        });
+
+        if (updateError) throw updateError;
+
+        await AsyncStorage.setItem(`userGreeting_${user.id}`, greetingMessage.trim());
+        
+        // Refresh user data globally
+        if (refreshUser) {
+          await refreshUser();
         }
-      });
-
-      if (updateError) throw updateError;
-
-      await AsyncStorage.setItem(`userGreeting_${user.id}`, greetingMessage.trim());
-      
-      // Refresh user data globally
-      if (refreshUser) {
-        await refreshUser();
       }
-    }
 
-    Alert.alert('تم التحديث', 'تم تحديث إعداداتك بنجاح');
+      showToast({ message: 'تم تحديث إعداداتك بنجاح', type: 'success' });
     } catch (error: any) {
-      Alert.alert('خطأ', error.message || 'حدث خطأ أثناء الحفظ');
+      showToast({ message: error.message || 'حدث خطأ أثناء الحفظ', type: 'error' });
     } finally {
       setIsUpdating(false);
     }

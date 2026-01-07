@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -41,6 +42,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     loading,
     error,
     sendMessage,
+    toggleLike,
     loadMoreMessages,
     hasMore,
   } = useGroupChat(groupId, currentUserId);
@@ -55,10 +57,19 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
   }, [messages.length]);
 
   const handleSend = async () => {
-    if (!inputText.trim() || sending) return;
+    if (sending) return;
+    
+    const textToSend = inputText.trim();
+    if (!textToSend) {
+      // إرسال قلب إذا كان الحقل فارغاً
+      setSending(true);
+      await sendMessage('❤️');
+      setSending(false);
+      return;
+    }
 
     setSending(true);
-    const success = await sendMessage(inputText);
+    const success = await sendMessage(textToSend);
     if (success) {
       setInputText('');
     }
@@ -98,11 +109,12 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 
   const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
     const isMe = item.user_id === currentUserId;
+    const hasLiked = item.likes?.includes(currentUserId) || false;
     const showDate = index === 0 || 
       new Date(item.created_at).toDateString() !== new Date(messages[index - 1].created_at).toDateString();
 
     return (
-      <View>
+      <View key={item.id}>
         {showDate && (
           <View style={styles.dateSeparator}>
             <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
@@ -110,40 +122,78 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
         )}
         
         <View style={[
-          styles.messageContainer,
-          isMe ? styles.myMessage : styles.otherMessage
+          styles.messageRow,
+          isMe ? styles.myMessageRow : styles.otherMessageRow
         ]}>
           {!isMe && (
             <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {getDisplayName(item).charAt(0)}
-                </Text>
-              </View>
+              {item.user?.avatar_url ? (
+                <Image 
+                  source={{ uri: item.user.avatar_url }} 
+                  style={styles.avatarImage} 
+                />
+              ) : (
+                <View style={[styles.avatar, { backgroundColor: Colors.primary }]}>
+                  <Text style={styles.avatarText}>
+                    {getDisplayName(item).charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
           
           <View style={[
-            styles.messageBubble,
-            isMe ? styles.myMessageBubble : styles.otherMessageBubble
+            styles.messageBubbleWrapper,
+            isMe ? styles.myMessageWrapper : styles.otherMessageWrapper
           ]}>
             {!isMe && (
               <Text style={styles.senderName}>{getDisplayName(item)}</Text>
             )}
             
-            <Text style={[
-              styles.messageText,
-              isMe ? styles.myMessageText : styles.otherMessageText
-            ]}>
-              {item.content}
-            </Text>
-            
-            <Text style={[
-              styles.messageTime,
-              isMe ? styles.myMessageTime : styles.otherMessageTime
-            ]}>
-              {formatTime(item.created_at)}
-            </Text>
+            <TouchableOpacity 
+              activeOpacity={0.9}
+              onLongPress={() => toggleLike(item.id)}
+              style={[
+                styles.messageBubble,
+                isMe ? styles.myBubble : styles.otherBubble
+              ]}
+            >
+              <Text style={[
+                styles.messageText,
+                isMe ? styles.myMessageText : styles.otherMessageText,
+                item.content === '❤️' && { fontSize: 45, lineHeight: 55, textAlign: 'center' }
+              ]}>
+                {item.content}
+              </Text>
+              
+              <View style={styles.messageFooter}>
+                <Text style={[
+                  styles.messageTime,
+                  isMe ? styles.myMessageTime : styles.otherMessageTime
+                ]}>
+                  {formatTime(item.created_at)}
+                </Text>
+              </View>
+
+              {/* زر التفاعل بالقلب - دائماً على اليسار */}
+              <TouchableOpacity 
+                style={[
+                  styles.heartBadge,
+                  (!hasLiked && (!item.likes || item.likes.length === 0)) && styles.heartBadgeInactive
+                ]}
+                onPress={() => toggleLike(item.id)}
+                activeOpacity={0.7}
+              >
+                <Icon 
+                  name={hasLiked ? "heart" : "heart-outline"} 
+                  size={14} 
+                  color={hasLiked ? "#ea384c" : "rgba(255,255,255,0.2)"} 
+                />
+                {(item.likes && item.likes.length > 0) && (
+                  <Text style={styles.likeCount}>{item.likes.length}</Text>
+                )}
+              </TouchableOpacity>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -237,14 +287,19 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
             {/* Input Area */}
             <View style={styles.inputContainer}>
               <TouchableOpacity
-                style={[styles.sendButton, (!inputText.trim() || sending) && styles.sendButtonDisabled]}
+                style={[styles.sendButton, sending && styles.sendButtonDisabled]}
                 onPress={handleSend}
-                disabled={!inputText.trim() || sending}
+                disabled={sending}
               >
                 {sending ? (
                   <ActivityIndicator size="small" color={Colors.textPrimary} />
                 ) : (
-                  <Icon name="send" size={20} color={Colors.textPrimary} />
+                  <Icon 
+                    name={inputText.trim() ? "send" : "heart"} 
+                    size={inputText.trim() ? 20 : 24} 
+                    color={Colors.textPrimary} 
+                    style={!inputText.trim() && { transform: [{ scale: 1.1 }] }}
+                  />
                 )}
               </TouchableOpacity>
               
@@ -286,37 +341,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-    backgroundColor: Colors.glassHeader,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.glassLight,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borderLighter,
   },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
   },
   headerTitle: {
-    color: Colors.textPrimary,
-    fontSize: Typography.h4.fontSize,
-    fontWeight: '700',
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   headerSubtitle: {
-    color: Colors.textSecondary,
-    fontSize: Typography.caption.fontSize,
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
   },
 
   // List
   listContent: {
-    padding: Spacing.lg,
-    paddingBottom: Spacing.xl,
+    paddingVertical: Spacing.xl,
   },
   listContentEmpty: {
     flex: 1,
@@ -354,100 +406,145 @@ const styles = StyleSheet.create({
   },
 
   // Messages
-  messageContainer: {
+  messageRow: {
     flexDirection: 'row',
-    marginBottom: Spacing.md,
-    maxWidth: '85%',
+    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.sm,
+    width: '100%',
   },
-  myMessage: {
-    alignSelf: 'flex-start', // English alignment (left), but Arabic text will be inside
-    flexDirection: 'row-reverse', // To put bubble on left but text inside correct
-    marginLeft: 0,
-    marginRight: 'auto', // Push to left
+  myMessageRow: {
+    flexDirection: 'row', // Keep avatar on left of my bubble if needed, but usually my messages don't have avatar
+    justifyContent: 'flex-start', // Messages start from left for "Me" in RTL logic? Wait.
+    // In Arabic: My messages are usually on the RIGHT.
+    flexDirection: 'row-reverse',
   },
-  otherMessage: {
-    alignSelf: 'flex-end', // Push to right
-    marginLeft: 'auto',
-    marginRight: 0,
+  otherMessageRow: {
+    flexDirection: 'row',
   },
   
   avatarContainer: {
-    marginLeft: Spacing.sm,
+    marginRight: Spacing.sm,
     justifyContent: 'flex-end',
+    marginBottom: 2,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    ...Shadows.sm,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  avatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   avatarText: {
     color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+
+  messageBubbleWrapper: {
+    maxWidth: '75%',
+    position: 'relative',
+  },
+  myMessageWrapper: {
+    alignItems: 'flex-end',
+  },
+  otherMessageWrapper: {
+    alignItems: 'flex-start',
+  },
+  
+  senderName: {
     fontSize: 12,
-    fontWeight: '700',
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 4,
+    marginHorizontal: 8,
+    fontWeight: '600',
   },
 
   messageBubble: {
-    padding: Spacing.md,
-    maxWidth: '100%',
-    ...Shadows.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg, // زيادة المسافة السفلية للقلب
+    borderRadius: 20,
+    minWidth: 70, // زيادة العرض الأدنى قليلاً
+    ...Shadows.md,
   },
-  myMessageBubble: {
+  myBubble: {
     backgroundColor: Colors.primary,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  otherMessageBubble: {
-    backgroundColor: Colors.glassInput,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderBottomLeftRadius: 16,
     borderBottomRightRadius: 4,
+    borderBottomLeftRadius: 20,
+  },
+  otherBubble: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.borderLighter,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
 
-  // Message Text
   messageText: {
-    fontSize: Typography.body.fontSize,
+    fontSize: 16,
     lineHeight: 22,
   },
   myMessageText: {
-    color: Colors.textPrimary,
-    textAlign: 'left',
+    color: '#fff',
+    textAlign: 'right',
   },
   otherMessageText: {
-    color: Colors.textPrimary,
+    color: '#fff',
     textAlign: 'right',
   },
 
-  // Message Time
-  messageTime: {
-    fontSize: 10,
+  messageFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
     marginTop: 4,
   },
+  messageTime: {
+    fontSize: 10,
+    opacity: 0.6,
+  },
   myMessageTime: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'left',
+    color: '#fff',
   },
   otherMessageTime: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    textAlign: 'right',
+    color: '#fff',
   },
-  senderName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: 4,
-    textAlign: 'right',
+
+  // Likes
+  heartBadge: {
+    position: 'absolute',
+    bottom: 4,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 10,
+    minWidth: 24,
+    justifyContent: 'center',
+  },
+  heartBadgeInactive: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  likeCount: {
+    fontSize: 10,
+    color: '#fff',
+    marginLeft: 2,
+    fontWeight: 'bold',
   },
 
   // Load More
@@ -477,39 +574,38 @@ const styles = StyleSheet.create({
 
   // Input Area
   inputContainer: {
-    flexDirection: 'row',
+    flexDirection: 'row', // تغيير الاتجاه ليكون الزر على اليسار
     alignItems: 'flex-end',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     borderTopWidth: 1,
-    borderTopColor: Colors.borderLighter,
-    backgroundColor: Colors.glassHeader,
+    borderTopColor: 'rgba(255,255,255,0.05)',
   },
   textInput: {
     flex: 1,
-    backgroundColor: Colors.glassInput,
-    borderRadius: BorderRadius.xl,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 24,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    color: Colors.textPrimary,
-    fontSize: Typography.body.fontSize,
-    maxHeight: 100,
-    marginLeft: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.borderLighter,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+    color: '#fff',
+    fontSize: 16,
+    maxHeight: 120,
+    marginLeft: Spacing.sm, // مسافة من الزر الذي على اليسار
+    textAlign: 'right',
   },
   sendButton: {
-    width: 46,
-    height: 46,
-    borderRadius: BorderRadius.full,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.primary,
+    ...Shadows.md,
   },
   sendButtonDisabled: {
-    opacity: 0.4,
-    backgroundColor: 'rgba(234, 56, 76, 0.5)',
+    opacity: 0.5,
+    backgroundColor: '#666',
   },
 });
 

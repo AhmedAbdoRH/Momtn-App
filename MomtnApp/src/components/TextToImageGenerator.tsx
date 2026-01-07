@@ -37,16 +37,18 @@ export const TextToImageGenerator = ({ onImageGenerated, isGenerating, setIsGene
       ctx.fillStyle = "rgba(10, 10, 10, 0.4)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // إضافة قلوب شفافة بدلاً من المربعات
+      // إضافة 30 قلب عشوائي شفاف كديكور
       for (let i = 0; i < 30; i++) {
         const x = Math.random() * canvas.width;
         const y = Math.random() * canvas.height;
-        const size = Math.random() * 20 + 10;
-        const alpha = Math.random() * 0.05;
+        const size = Math.random() * 30 + 15; // حجم القلوب
+        const alpha = Math.random() * 0.15 + 0.05; // شفافية القلوب (خفيفة جداً)
 
         ctx.save();
         ctx.translate(x, y);
+        ctx.rotate(Math.random() * Math.PI * 2); // تدوير عشوائي
         ctx.scale(size / 100, size / 100);
+        
         ctx.beginPath();
         ctx.moveTo(75, 40);
         ctx.bezierCurveTo(75, 37, 70, 25, 50, 25);
@@ -56,7 +58,8 @@ export const TextToImageGenerator = ({ onImageGenerated, isGenerating, setIsGene
         ctx.bezierCurveTo(130, 62.5, 130, 25, 100, 25);
         ctx.bezierCurveTo(85, 25, 75, 37, 75, 40);
         ctx.closePath();
-        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+        
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`; // قلوب بيضاء شفافة كديكور
         ctx.fill();
         ctx.restore();
       }
@@ -65,13 +68,19 @@ export const TextToImageGenerator = ({ onImageGenerated, isGenerating, setIsGene
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = "bold 48px 'Cairo', 'Arial', 'Noto Sans Arabic', sans-serif";
+      ctx.font = "48px 'Cairo', sans-serif";
+      
+      // ظل خفيف للنص
+      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
 
-      // لف النص العربي
+      // لف النص تلقائياً للأسطر المتعددة
       const words = gratitudeText.split(" ");
       const lines: string[] = [];
       let currentLine = "";
-      const maxWidth = canvas.width - 100;
+      const maxWidth = canvas.width - 120; // هامش جانبي
 
       for (const word of words) {
         const testLine = currentLine + (currentLine ? " " : "") + word;
@@ -85,14 +94,12 @@ export const TextToImageGenerator = ({ onImageGenerated, isGenerating, setIsGene
       }
       if (currentLine) lines.push(currentLine);
 
-      const lineHeight = 60;
-      const startY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+      const lineHeight = 70; // ارتفاع السطر لخط 48px
+      const totalHeight = lines.length * lineHeight;
+      const startY = (canvas.height - totalHeight) / 2 + lineHeight / 2;
 
       lines.forEach((line, index) => {
         const y = startY + index * lineHeight;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-        ctx.fillText(line, canvas.width / 2 + 2, y + 2);
-        ctx.fillStyle = "#ffffff";
         ctx.fillText(line, canvas.width / 2, y);
       });
 

@@ -16,10 +16,10 @@ const Greeting: React.FC<GreetingProps> = ({name}) => {
 
 const styles = StyleSheet.create({
   greetingContainer: {
-    padding: Spacing.large,
+    padding: Spacing.lg,
   },
   greetingText: {
-    ...Typography.heading,
+    ...Typography.h2,
     textAlign: 'center',
     color: Colors.primary,
   },

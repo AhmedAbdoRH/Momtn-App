@@ -1,17 +1,19 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
   ActivityIndicator,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNotifications } from '../hooks/useNotifications';
 import { AppNotification } from '../services/notifications';
-import { Colors, BorderRadius, Spacing, Typography, ZIndex, Shadows } from '../../theme';
+import { BorderRadius, Spacing, ZIndex, Shadows } from '../../theme';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface NotificationsPopupProps {
   userId: string;
@@ -63,11 +65,11 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose
     return date.toLocaleDateString('ar-EG');
   };
 
-  const renderNotification = ({ item }: { item: AppNotification }) => {
+  const renderNotification = (item: AppNotification) => {
     const icon = getNotificationIcon(item.type);
     
     return (
-      <View style={[styles.notificationWrapper, !item.is_read && styles.unreadWrapper]}>
+      <View key={item.id} style={[styles.notificationWrapper, !item.is_read && styles.unreadWrapper]}>
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => deleteNotification(item.id)}
@@ -82,7 +84,7 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose
             if (!item.is_read) await markAsRead(item.id);
             if (onNotificationPress) {
               onNotificationPress(item);
-              onClose();
+              // لا نستدعي onClose هنا لأن onNotificationPress سيتعامل مع الإغلاق
             }
           }}
           activeOpacity={0.7}
@@ -90,7 +92,12 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose
           <View style={styles.contentContainer}>
             <Text style={styles.notificationTitle}>{item.title}</Text>
             <Text style={styles.notificationBody} numberOfLines={2}>{item.body}</Text>
-            <Text style={styles.notificationTime}>{formatTime(item.created_at)}</Text>
+            <View style={styles.timeRow}>
+              <Text style={styles.notificationTime}>{formatTime(item.created_at)}</Text>
+              {item.sender_name && (
+                <Text style={styles.senderName}>من: {item.sender_name}</Text>
+              )}
+            </View>
           </View>
 
           <View style={[styles.iconContainer, { backgroundColor: `${icon.color}20` }]}>
@@ -105,14 +112,24 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose
 
   return (
     <View style={styles.container}>
+      {/* Arrow pointer */}
+      <View style={styles.arrow} />
+      
       <View style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Icon name="close" size={20} color="rgba(255,255,255,0.5)" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>الإشعارات</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>الإشعارات</Text>
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+            </View>
+          )}
+        </View>
         {unreadCount > 0 && (
           <TouchableOpacity onPress={markAllAsRead} style={styles.markAllButton}>
-            <Text style={styles.markAllText}>قراءة الكل</Text>
+            <Icon name="checkmark-done" size={18} color="#ea384c" />
           </TouchableOpacity>
         )}
       </View>
@@ -120,26 +137,22 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose
       {loading && notifications.length === 0 ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="small" color="#ea384c" />
+          <Text style={styles.loadingText}>جاري التحميل...</Text>
         </View>
       ) : notifications.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Icon name="notifications-off-outline" size={40} color="rgba(255,255,255,0.2)" />
+          <Icon name="notifications-off-outline" size={50} color="rgba(255,255,255,0.15)" />
           <Text style={styles.emptyText}>لا توجد إشعارات</Text>
+          <Text style={styles.emptySubText}>ستظهر هنا الإشعارات الجديدة</Text>
         </View>
       ) : (
-        <FlatList
-          data={notifications.slice(0, 10)} // Show only latest 10 in popup
-          renderItem={renderNotification}
-          keyExtractor={(item) => item.id}
+        <ScrollView 
+          style={styles.scrollView}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-        />
-      )}
-      
-      {notifications.length > 0 && (
-        <TouchableOpacity style={styles.footer} onPress={onClose}>
-          <Text style={styles.footerText}>إغلاق</Text>
-        </TouchableOpacity>
+        >
+          {notifications.slice(0, 15).map(renderNotification)}
+        </ScrollView>
       )}
     </View>
   );
@@ -148,29 +161,60 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 100,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(26, 26, 26, 0.98)',
+    top: 95,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(20, 20, 25, 0.98)',
     borderRadius: BorderRadius.lg,
-    maxHeight: 400,
+    maxHeight: SCREEN_HEIGHT * 0.55,
     zIndex: ZIndex.modal + 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     ...Shadows.xl,
     overflow: 'hidden',
+  },
+  arrow: {
+    position: 'absolute',
+    top: -8,
+    left: 55,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: 'rgba(20, 20, 25, 0.98)',
   },
   header: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: Spacing.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+  },
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerTitle: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  unreadBadge: {
+    backgroundColor: '#ea384c',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginRight: 8,
+  },
+  unreadBadgeText: {
+    color: '#fff',
+    fontSize: 11,
     fontWeight: '700',
   },
   closeButton: {
@@ -179,9 +223,8 @@ const styles = StyleSheet.create({
   markAllButton: {
     padding: 4,
   },
-  markAllText: {
-    color: '#ea384c',
-    fontSize: 12,
+  scrollView: {
+    flex: 1,
   },
   listContent: {
     padding: Spacing.sm,
@@ -191,14 +234,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xs,
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: BorderRadius.sm,
-    paddingLeft: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    paddingLeft: Spacing.xs,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   unreadWrapper: {
-    backgroundColor: 'rgba(234,56,76,0.05)',
+    backgroundColor: 'rgba(234,56,76,0.08)',
+    borderColor: 'rgba(234,56,76,0.15)',
   },
   deleteButton: {
-    padding: 8,
+    padding: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -209,9 +255,9 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.xs,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: Spacing.sm,
@@ -225,44 +271,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'right',
+    marginBottom: 2,
   },
   notificationBody: {
     color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
+    fontSize: 13,
     textAlign: 'right',
+    lineHeight: 18,
+  },
+  timeRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    marginTop: 4,
   },
   notificationTime: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 10,
-    marginTop: 2,
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11,
+  },
+  senderName: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+    marginRight: 8,
   },
   unreadDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#ea384c',
     position: 'absolute',
-    top: 10,
-    right: 5,
+    top: 12,
+    right: 8,
   },
   centerContainer: {
-    padding: 40,
+    padding: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyText: {
-    color: 'rgba(255,255,255,0.3)',
+  loadingText: {
+    color: 'rgba(255,255,255,0.4)',
     marginTop: 10,
-    fontSize: 14,
+    fontSize: 13,
   },
-  footer: {
-    padding: Spacing.sm,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+  emptyText: {
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 12,
+    fontSize: 15,
+    fontWeight: '600',
   },
-  footerText: {
-    color: 'rgba(255,255,255,0.5)',
+  emptySubText: {
+    color: 'rgba(255,255,255,0.25)',
+    marginTop: 4,
     fontSize: 12,
   },
 });

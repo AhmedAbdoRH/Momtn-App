@@ -30,7 +30,7 @@ export const useNotifications = (userId: string | null): UseNotificationsReturn 
     try {
       const data = await NotificationsService.getUserNotifications(userId);
       setNotifications(data);
-      
+
       const count = data.filter(n => !n.is_read).length;
       setUnreadCount(count);
     } catch (err: any) {
@@ -50,7 +50,7 @@ export const useNotifications = (userId: string | null): UseNotificationsReturn 
   const markAsRead = useCallback(async (id: string) => {
     try {
       await NotificationsService.markAsRead(id);
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
@@ -62,7 +62,7 @@ export const useNotifications = (userId: string | null): UseNotificationsReturn 
   // تحديد الكل كمقروء
   const markAllAsRead = useCallback(async () => {
     if (!userId) return;
-    
+
     try {
       await NotificationsService.markAllAsRead(userId);
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -92,7 +92,7 @@ export const useNotifications = (userId: string | null): UseNotificationsReturn 
 
     // تهيئة خدمة الإشعارات
     NotificationsService.initialize();
-    
+
     // تحميل الإشعارات الأولية
     fetchNotifications();
 
@@ -109,21 +109,10 @@ export const useNotifications = (userId: string | null): UseNotificationsReturn 
         },
         async (payload) => {
           const newNotification = payload.new as AppNotification;
-          
+
           // إضافة الإشعار للقائمة
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
-
-          // عرض إشعار محلي
-          await NotificationsService.showLocalNotification(
-            newNotification.title,
-            newNotification.body,
-            { 
-              notificationId: newNotification.id,
-              type: newNotification.type,
-              groupId: newNotification.group_id 
-            }
-          );
         }
       )
       .on(

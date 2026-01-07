@@ -9,7 +9,6 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -19,8 +18,9 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../components/auth/AuthProvider';
-
-const { width: screenWidth } = Dimensions.get('window');
+import { useToast } from '../providers/ToastProvider';
+import RNFS from 'react-native-fs';
+import { decode as decodeBase64 } from 'base64-arraybuffer';
 
 interface CreateNewScreenProps {
   navigation: any;
@@ -37,6 +37,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
   const onPhotoAdded = route?.params?.onPhotoAdded;
 
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   // Content type state
   const [contentType, setContentType] = useState<'image' | 'text'>('image');
@@ -57,12 +58,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
   const [showAlbumInput, setShowAlbumInput] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
 
-  // Fetch album suggestions
-  useEffect(() => {
-    fetchAlbumSuggestions();
-  }, [user, selectedGroupId]);
-
-  const fetchAlbumSuggestions = async () => {
+  const fetchAlbumSuggestions = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -90,7 +86,12 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
     } catch (error) {
       console.error('Error fetching albums:', error);
     }
-  };
+  }, [user, selectedGroupId]);
+
+  // Fetch album suggestions
+  useEffect(() => {
+    fetchAlbumSuggestions();
+  }, [user, selectedGroupId, fetchAlbumSuggestions]);
 
   // Image picker
   const pickImage = async (useCamera: boolean = false) => {
@@ -114,7 +115,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('خطأ', 'حدث خطأ أثناء اختيار الصورة');
+      showToast({ message: 'حدث خطأ أثناء اختيار الصورة', type: 'error' });
     }
   };
 
@@ -154,7 +155,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
   const addNewAlbum = () => {
     const name = newAlbumName.trim();
     if (!name) {
-      Alert.alert('خطأ', 'يرجى إدخال اسم الألبوم');
+      showToast({ message: 'يرجى إدخال اسم الألبوم', type: 'error' });
       return;
     }
 
@@ -169,17 +170,17 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
   // Submit
   const handleSubmit = async () => {
     if (!user) {
-      Alert.alert('خطأ', 'يجب تسجيل الدخول أولاً');
+      showToast({ message: 'يجب تسجيل الدخول أولاً', type: 'error' });
       return;
     }
 
     if (contentType === 'image' && !imageUri) {
-      Alert.alert('خطأ', 'يرجى اختيار صورة');
+      showToast({ message: 'يرجى اختيار صورة', type: 'error' });
       return;
     }
 
     if (contentType === 'text' && !textContent.trim()) {
-      Alert.alert('خطأ', 'يرجى كتابة نص الامتنان');
+      showToast({ message: 'يرجى كتابة نص الامتنان', type: 'error' });
       return;
     }
 
@@ -189,20 +190,20 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
       let publicUrl = '';
 
       if (contentType === 'image' && imageFile) {
-        // Upload image
         const fileExt = imageFile.fileName?.split('.').pop()?.toLowerCase() || 'jpg';
         const fileName = `${user.id}/photo_${Date.now()}.${fileExt}`;
 
-        const formData = new FormData();
-        formData.append('file', {
-          uri: imageUri,
-          name: fileName,
-          type: imageFile.type || 'image/jpeg',
-        } as any);
+        const normalizedUri = imageUri.startsWith('file://') ? imageUri : imageUri;
+        const base64Data = await RNFS.readFile(normalizedUri, 'base64');
+        const arrayBuffer = decodeBase64(base64Data);
 
         const { error: uploadError, data: uploadData } = await supabase.storage
           .from('photos')
-          .upload(fileName, formData, { cacheControl: '3600', upsert: false });
+          .upload(fileName, arrayBuffer, {
+            contentType: imageFile.type || 'image/jpeg',
+            cacheControl: '3600',
+            upsert: false,
+          });
 
         if (uploadError) throw uploadError;
 
@@ -212,9 +213,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
 
         publicUrl = urlData.publicUrl;
       } else if (contentType === 'text') {
-        // Generate text image (placeholder - you can implement TextToImage later)
-        // For now, we'll save text as caption without image
-        publicUrl = ''; // Or generate a placeholder image
+        publicUrl = '';
       }
 
       // Check group membership if needed
@@ -244,24 +243,15 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
 
       if (insertError) throw insertError;
 
-      Alert.alert(
-        '🎉 تمت الإضافة بنجاح',
-        selectedGroupId
-          ? 'تم إضافة الصورة إلى المجموعة'
-          : 'تم إضافة الصورة بنجاح',
-        [
-          {
-            text: 'حسناً',
-            onPress: () => {
-              onPhotoAdded?.();
-              navigation.goBack();
-            },
-          },
-        ]
-      );
+      showToast({
+        message: selectedGroupId ? 'تم إضافة الصورة إلى المجموعة' : 'تم إضافة الصورة بنجاح',
+        type: 'success'
+      });
+      onPhotoAdded?.();
+      navigation.goBack();
     } catch (error: any) {
       console.error('Error submitting:', error);
-      Alert.alert('خطأ', error.message || 'حدث خطأ أثناء الحفظ');
+      showToast({ message: error.message || 'حدث خطأ أثناء الحفظ', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

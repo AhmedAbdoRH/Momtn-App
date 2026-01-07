@@ -12,7 +12,6 @@ import {
   Image,
   ActivityIndicator,
   ScrollView,
-  Dimensions,
   KeyboardAvoidingView,
 } from 'react-native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
@@ -20,9 +19,8 @@ import { supabase } from '../src/services/supabase';
 import { useAuth } from '../src/components/auth/AuthProvider';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
-import { Colors, Spacing, Typography, BorderRadius } from '../theme';
-
-const { width: screenWidth } = Dimensions.get('window');
+import RNFS from 'react-native-fs';
+import { decode as decodeBase64 } from 'base64-arraybuffer';
 
 interface CreateNewDialogProps {
   visible: boolean;
@@ -58,15 +56,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
   const [showAlbumInput, setShowAlbumInput] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
 
-  // Reset form when modal opens
-  useEffect(() => {
-    if (visible) {
-      resetForm();
-      fetchAlbumSuggestions();
-    }
-  }, [visible]);
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setContentType('image');
     setImageUri(null);
     setImageFile(null);
@@ -76,10 +66,10 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
     setSelectedAlbums(new Set());
     setShowAlbumInput(false);
     setNewAlbumName('');
-  };
+  }, []);
 
   // Fetch album suggestions
-  const fetchAlbumSuggestions = async () => {
+  const fetchAlbumSuggestions = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -107,7 +97,15 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
     } catch (error) {
       console.error('Error fetching albums:', error);
     }
-  };
+  }, [user, selectedGroupId]);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (visible) {
+      resetForm();
+      fetchAlbumSuggestions();
+    }
+  }, [visible, resetForm, fetchAlbumSuggestions]);
 
   // Image picker
   const pickImage = async (useCamera: boolean = false) => {
@@ -191,12 +189,9 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
       const fileExt = imageFile?.fileName?.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${user.id}/photo_${Date.now()}.${fileExt}`;
 
-      // Read the file as blob
-      const response = await fetch(uri);
-      const blob = await response.blob();
-
-      // Convert blob to ArrayBuffer
-      const arrayBuffer = await new Response(blob).arrayBuffer();
+      const normalizedUri = uri.startsWith('file://') ? uri : uri;
+      const base64Data = await RNFS.readFile(normalizedUri, 'base64');
+      const arrayBuffer = decodeBase64(base64Data);
 
       const { data, error } = await supabase.storage
         .from('photos')
@@ -207,7 +202,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
         });
 
       if (error) {
-        console.error('Upload error:', error);
+        console.error('Upload error details:', error);
         throw error;
       }
 
@@ -253,7 +248,8 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
       const content = contentType === 'text' ? textContent.trim() : caption.trim();
       const hashtags = Array.from(selectedAlbums);
 
-      onSubmit(content, uploadedImageUrl, hashtags);
+      // إذا كان من نوع نص، نرسل سلسلة فارغة للصورة لتجنب قيود قاعدة البيانات
+      onSubmit(content, contentType === 'text' ? '' : uploadedImageUrl, hashtags);
       resetForm();
       onClose();
     } catch (error) {

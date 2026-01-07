@@ -10,7 +10,8 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../theme';
+import { Colors, Spacing, Typography, BorderRadius } from '../../theme';
+import { useToast } from '../providers/ToastProvider';
 
 interface CreateNewDialogProps {
   visible: boolean;
@@ -24,10 +25,11 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
   onSubmit,
 }) => {
   const [content, setContent] = useState('');
+  const { showToast } = useToast();
 
   const handleSubmit = () => {
     if (content.trim().length === 0) {
-      Alert.alert('خطأ', 'يرجى كتابة محتوى اللحظة');
+      showToast({ message: 'يرجى كتابة محتوى اللحظة', type: 'warning' });
       return;
     }
 

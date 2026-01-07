@@ -13,11 +13,11 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../components/auth/AuthProvider';
+import { useToast } from '../providers/ToastProvider';
 
 const PrivacyScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { user } = useAuth();
+  const { showToast } = useToast();
   
   const [privateProfile, setPrivateProfile] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
@@ -32,7 +32,7 @@ const PrivacyScreen: React.FC = () => {
         { 
           text: 'إرسال', 
           onPress: () => {
-            Alert.alert('تم الإرسال', 'تحقق من بريدك الإلكتروني');
+            showToast({ message: 'تم إرسال الرابط لبريدك الإلكتروني', type: 'success' });
           }
         },
       ]
@@ -49,7 +49,7 @@ const PrivacyScreen: React.FC = () => {
           text: 'حذف الحساب', 
           style: 'destructive',
           onPress: () => {
-            Alert.alert('تم', 'سيتم حذف حسابك خلال 30 يوم');
+            showToast({ message: 'تم تقديم طلب الحذف، سيتم التنفيذ خلال 30 يوم', type: 'info' });
           }
         },
       ]

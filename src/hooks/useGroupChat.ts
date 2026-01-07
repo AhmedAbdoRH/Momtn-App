@@ -11,7 +11,9 @@ export interface ChatMessage {
   user?: {
     email: string;
     full_name: string | null;
+    avatar_url?: string | null;
   };
+  likes?: string[];
 }
 
 interface UseGroupChatReturn {
@@ -19,6 +21,7 @@ interface UseGroupChatReturn {
   loading: boolean;
   error: string | null;
   sendMessage: (content: string) => Promise<boolean>;
+  toggleLike: (messageId: string) => Promise<void>;
   loadMoreMessages: () => Promise<void>;
   hasMore: boolean;
 }
@@ -54,14 +57,15 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         const userIds = [...new Set(messagesData.map((m: any) => m.user_id))];
         const { data: usersData } = await supabase
           .from('users')
-          .select('id, email, full_name')
+          .select('id, email, full_name, avatar_url')
           .in('id', userIds as string[]);
 
         const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
 
         const messagesWithUsers: ChatMessage[] = messagesData.map((msg: any) => ({
           ...msg,
-          user: usersMap.get(msg.user_id) || { email: '', full_name: null }
+          user: usersMap.get(msg.user_id) || { email: '', full_name: null, avatar_url: null },
+          likes: msg.likes || []
         }));
 
         setMessages(messagesWithUsers);
@@ -99,14 +103,15 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         const userIds = [...new Set(moreMessages.map((m: any) => m.user_id))];
         const { data: usersData } = await supabase
           .from('users')
-          .select('id, email, full_name')
+          .select('id, email, full_name, avatar_url')
           .in('id', userIds as string[]);
 
         const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
 
         const messagesWithUsers: ChatMessage[] = moreMessages.map((msg: any) => ({
           ...msg,
-          user: usersMap.get(msg.user_id) || { email: '', full_name: null }
+          user: usersMap.get(msg.user_id) || { email: '', full_name: null, avatar_url: null },
+          likes: msg.likes || []
         }));
 
         setMessages(prev => [...messagesWithUsers.reverse(), ...prev]);
@@ -171,6 +176,31 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
     }
   }, [groupId, userId]);
 
+  // التفاعل مع الرسائل
+  const toggleLike = useCallback(async (messageId: string) => {
+    if (!userId) return;
+
+    try {
+      const message = messages.find(m => m.id === messageId);
+      if (!message) return;
+
+      const currentLikes = message.likes || [];
+      const hasLiked = currentLikes.includes(userId);
+      const newLikes = hasLiked
+        ? currentLikes.filter(id => id !== userId)
+        : [...currentLikes, userId];
+
+      const { error: updateError } = await (supabase as any)
+        .from('group_messages')
+        .update({ likes: newLikes })
+        .eq('id', messageId);
+
+      if (updateError) throw updateError;
+    } catch (err: any) {
+      console.error('Error toggling like:', err);
+    }
+  }, [userId, messages]);
+
   // الاشتراك في Realtime
   useEffect(() => {
     if (!groupId) return;
@@ -194,16 +224,34 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
           // جلب معلومات المرسل
           const { data: userData } = await supabase
             .from('users')
-            .select('id, email, full_name')
+            .select('id, email, full_name, avatar_url')
             .eq('id', newMessage.user_id)
             .single();
 
           const messageWithUser: ChatMessage = {
             ...newMessage,
-            user: userData || { email: '', full_name: null }
+            user: userData || { email: '', full_name: null, avatar_url: null },
+            likes: newMessage.likes || []
           };
 
           setMessages(prev => [...prev, messageWithUser]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'group_messages',
+          filter: `group_id=eq.${groupId}`
+        },
+        (payload) => {
+          const updatedMessage = payload.new as ChatMessage;
+          setMessages(prev => prev.map(m => 
+            m.id === updatedMessage.id 
+              ? { ...m, likes: updatedMessage.likes || [] } 
+              : m
+          ));
         }
       )
       .on(
@@ -235,6 +283,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
     loading,
     error,
     sendMessage,
+    toggleLike,
     loadMoreMessages,
     hasMore
   };

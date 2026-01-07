@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ScrollView,
   StatusBar,
@@ -15,6 +15,7 @@ import {
   Modal,
   Animated,
   PanResponder,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomAlertDialog from '../components/CustomAlertDialog';
@@ -22,29 +23,32 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useAuth } from '../components/auth/AuthProvider';
+import { useToast } from '../providers/ToastProvider';
 import { useNavigation } from '@react-navigation/native';
 
 // Import components from their new locations
-import { 
-  CreateNewDialog, 
-  HeartLogo, 
-  PhotoGrid, 
+import {
+  CreateNewDialog,
+  HeartLogo,
+  PhotoGrid,
 } from '../../components';
 import { FloatingChatButton, GroupChatWindow } from '../components/chat';
 import NotificationsPopup from '../components/NotificationsPopup';
 
 import { GroupsService, Group } from '../services/groups';
 import { useNotifications } from '../hooks/useNotifications';
+import { NotificationsService } from '../services/notifications';
 import { supabase } from '../services/supabase';
 import { ProfileService } from '../services/profile';
-import { 
-  Colors, 
-  Spacing, 
-  BorderRadius, 
-  Shadows, 
+import { NotificationNavigationService } from '../services/notificationNavigation';
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  Shadows,
   Typography,
   ComponentSizes,
-  ZIndex 
+  ZIndex
 } from '../../theme';
 
 import { useRoute, RouteProp } from '@react-navigation/native';
@@ -56,12 +60,14 @@ type HomeScreenRouteProp = RouteProp<{
 }, 'Main'>;
 
 import notifee, { EventType } from '@notifee/react-native';
+import messaging from '@react-native-firebase/messaging';
 
 const HomeScreen: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { showToast } = useToast();
   const navigation = useNavigation();
   const route = useRoute<HomeScreenRouteProp>();
-  const { unreadCount } = useNotifications(user?.id || null);
+  const { unreadCount, markAllAsRead } = useNotifications(user?.id || null);
 
   const [activeTab, setActiveTab] = useState<'personal' | 'shared'>('personal');
   const [welcomeMessage, setWelcomeMessage] = useState('لحظاتك السعيدة، والنعم الجميلة في حياتك ✨');
@@ -69,21 +75,112 @@ const HomeScreen: React.FC = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSharedSpacesModal, setShowSharedSpacesModal] = useState(false);
+
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showJoinGroupModal, setShowJoinGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [joinInviteCode, setJoinInviteCode] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const photoGridOffset = useRef(0);
   const [userGroups, setUserGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+
+  const handleScrollRequest = useCallback((y: number) => {
+    console.log('Main ScrollView received scroll request to y:', y, 'offset:', photoGridOffset.current);
+    // Add a small delay to ensure layout is stable especially after navigation/mounting
+    setTimeout(() => {
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({
+          y: photoGridOffset.current + y,
+          animated: true
+        });
+      }
+    }, 1000);
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [showGroupChat, setShowGroupChat] = useState(false);
   const [photosKey, setPhotosKey] = useState(0);
+  const [notificationTargetPhotoId, setNotificationTargetPhotoId] = useState<string | null>(null);
+  const [notificationTargetCommentId, setNotificationTargetCommentId] = useState<string | null>(null);
+  const [notificationTargetParentCommentId, setNotificationTargetParentCommentId] = useState<string | null>(null);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showCreatedGroupModal, setShowCreatedGroupModal] = useState(false);
   const [createdGroupInfo, setCreatedGroupInfo] = useState<Group | null>(null);
-  const [albums, setAlbums] = useState<{id: string, name: string}[]>([]);
+  const [albums, setAlbums] = useState<{ id: string, name: string }[]>([]);
   const [loadingAlbums, setLoadingAlbums] = useState(false);
-  
+
+  const fetchAlbums = useCallback(async () => {
+    if (!user) return;
+    setLoadingAlbums(true);
+    try {
+      let query = supabase.from('photos').select('hashtags');
+
+      if (activeTab === 'shared' && selectedGroup) {
+        query = query.eq('group_id', selectedGroup.id);
+      } else {
+        query = query.is('group_id', null).eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const tags = new Set<string>();
+      data?.forEach((photo: any) => {
+        photo.hashtags?.forEach((tag: string) => {
+          if (tag?.trim()) tags.add(tag.trim());
+        });
+      });
+
+      const actualAlbums = Array.from(tags).map((tag, _index) => ({
+        id: `album-${_index}`,
+        name: tag
+      }));
+
+      setAlbums(actualAlbums);
+    } catch (error) {
+      console.error('Error fetching albums:', error);
+    } finally {
+      setLoadingAlbums(false);
+    }
+  }, [user, activeTab, selectedGroup]);
+
+  const loadWelcomeMessage = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const profile = await ProfileService.getProfile(user.id);
+      if (profile?.user_welcome_message) {
+        setWelcomeMessage(profile.user_welcome_message);
+      }
+    } catch (error) {
+      console.error('Error loading welcome message:', error);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.id) {
+      ProfileService.getProfile(user.id).then(profile => {
+        if (profile?.avatar_url) {
+          setAvatarUrl(profile.avatar_url);
+        }
+      }).catch(err => console.error('Error loading avatar:', err));
+    }
+  }, [user]);
+
+  const loadUserData = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      const groups = await GroupsService.getUserGroups();
+      setUserGroups(groups);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
   // Drawer state and animations
   const { width } = Dimensions.get('window');
   const drawerWidth = width * 0.8;
@@ -116,11 +213,11 @@ const HomeScreen: React.FC = () => {
         if (!isDrawerOpen) {
           newValue = drawerWidth + gestureState.dx;
         }
-        
+
         // Clamp value between 0 and drawerWidth
         if (newValue < 0) newValue = 0;
         if (newValue > drawerWidth) newValue = drawerWidth;
-        
+
         drawerAnimation.setValue(newValue);
       },
       onPanResponderRelease: (_, gestureState) => {
@@ -155,45 +252,167 @@ const HomeScreen: React.FC = () => {
   }>({
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
-    const handleNotificationData = async (data: any) => {
-      if (data?.group_id) {
-        console.log('Handling notification for group:', data.group_id);
-        
-        // تأكد من تحميل المجموعات أولاً إذا لم تكن محملة
-        let currentGroups = userGroups;
-        if (currentGroups.length === 0) {
-          currentGroups = await GroupsService.getUserGroups();
-          setUserGroups(currentGroups);
-        }
-  
-        const group = currentGroups.find(g => g.id === data.group_id);
-        if (group) {
-          setSelectedGroup(group);
-          setActiveTab('shared');
-          
-          // إذا كان إشعار رسالة جديدة، افتح المحادثة فوراً
-          if (data.type === 'new_message' || data.type === 'group_chat') {
-            setShowGroupChat(true);
+  const handleNotificationData = useCallback(async (data: any) => {
+    const groupId = data?.group_id || data?.groupId;
+    const photoId = (data as any)?.photo_id || (data as any)?.photoId;
+    const messageId = (data as any)?.messageId || (data as any)?.message_id;
+    const commentId = (data as any)?.comment_id || (data as any)?.commentId;
+    const parentCommentId = (data as any)?.parent_comment_id || (data as any)?.parentCommentId;
+    const type = (data as any)?.type;
+
+    if (groupId) {
+      console.log('Handling notification for group:', groupId);
+
+      let currentGroups = userGroups;
+      if (currentGroups.length === 0) {
+        currentGroups = await GroupsService.getUserGroups();
+        setUserGroups(currentGroups);
+      }
+
+      const group = currentGroups.find(g => g.id === groupId);
+      if (group) {
+        setSelectedGroup(group);
+        setActiveTab('shared');
+
+        const hasPhotoId = Boolean(photoId);
+        const hasMessageId = Boolean(messageId);
+
+        console.log('Notification flags:', { hasPhotoId, hasMessageId });
+
+        if (hasPhotoId) {
+          setShowGroupChat(false);
+
+          if (type === 'comment' || type === 'like' || type === 'reply') {
+            setNotificationTargetPhotoId(photoId || null);
+            setNotificationTargetCommentId(commentId || null);
+            setNotificationTargetParentCommentId(parentCommentId || null);
           } else {
-            // لأنواع الإشعارات الأخرى (صورة، تعليق)، فقط اعرض المجموعة
-            setShowGroupChat(false);
+            setNotificationTargetPhotoId(null);
+            setNotificationTargetCommentId(null);
+            setNotificationTargetParentCommentId(null);
           }
+
+          setPhotosKey(prev => prev + 1);
+          console.log('Opening group page for photo-like notification');
         } else {
-          console.log('Group not found in user groups:', data.group_id);
+          setShowGroupChat(true);
+          setNotificationTargetPhotoId(null);
+          setNotificationTargetCommentId(null);
+          setNotificationTargetParentCommentId(null);
+          console.log('Opening chat for non-photo notification');
         }
+      } else {
+        console.log('Group not found in user groups:', groupId);
+      }
+    } else if (photoId) {
+      setSelectedGroup(null);
+      setActiveTab('personal');
+      setShowGroupChat(false);
+
+      if (type === 'comment' || type === 'like' || type === 'reply') {
+        setNotificationTargetPhotoId(photoId || null);
+        setNotificationTargetCommentId(commentId || null);
+        setNotificationTargetParentCommentId(parentCommentId || null);
+      } else {
+        setNotificationTargetPhotoId(null);
+        setNotificationTargetCommentId(null);
+        setNotificationTargetParentCommentId(null);
+      }
+
+      setPhotosKey(prev => prev + 1);
+      console.log('Opening personal photos for notification');
+    }
+  }, [userGroups]);
+
+  // Effect for global notification listeners (Foreground & Background Resume)
+  useEffect(() => {
+    // الاستماع للإشعارات أثناء تشغيل التطبيق (Foreground)
+    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+      if (type === EventType.PRESS) {
+        console.log('User pressed notification in foreground:', detail.notification?.data);
+        handleNotificationData(detail.notification?.data);
+      }
+    });
+
+    // الاستماع لفتح الإشعار من الخلفية (FCM Native)
+    const messagingUnsubscribe = messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log('Notification caused app to open from background state (FCM):', remoteMessage.data);
+      if (remoteMessage.data) {
+        handleNotificationData(remoteMessage.data);
+      }
+    });
+
+    // الاستماع للإشعارات القادمة أثناء عمل التطبيق (FCM Foreground)
+    const onMessageUnsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('FCM Message received in foreground:', remoteMessage);
+
+      const notification = remoteMessage.notification;
+      const data = remoteMessage.data;
+
+      if (notification || data) {
+        setToast({
+          visible: true,
+          message: String(notification?.body || data?.body || data?.message || 'إشعار جديد'),
+          type: 'info',
+          data: data
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      messagingUnsubscribe();
+      onMessageUnsubscribe();
+    };
+  }, [handleNotificationData]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // التعامل مع الإشعار الذي فتح التطبيق (Cold Start - Notifee)
+    notifee.getInitialNotification().then(initialNotification => {
+      if (initialNotification) {
+        console.log('App opened from notification (Notifee):', initialNotification.notification.data);
+        handleNotificationData(initialNotification.notification.data);
+      }
+    });
+
+    // التعامل مع الإشعار الذي فتح التطبيق (Cold Start - FCM Native)
+    messaging().getInitialNotification().then(remoteMessage => {
+      if (remoteMessage) {
+        console.log('App opened from notification (FCM):', remoteMessage.data);
+        if (remoteMessage.data) {
+          handleNotificationData(remoteMessage.data);
+        }
+      }
+    });
+
+    // التحقق من الإشعارات المحفوظة (Background Press or Manual Navigation)
+    const checkPendingNotification = async () => {
+      try {
+        const pendingData = await NotificationNavigationService.getPendingNotification();
+        const hasGroup = pendingData && (pendingData.group_id || (pendingData as any).groupId);
+        const hasPhoto = pendingData && ((pendingData as any).photo_id || (pendingData as any).photoId || (pendingData as any).data?.photo_id);
+
+        if (hasGroup || hasPhoto) {
+          console.log('Found pending notification:', pendingData);
+          await handleNotificationData(pendingData);
+          // مسح البيانات بعد معالجتها
+          await NotificationNavigationService.clearPendingNotification();
+        }
+      } catch (error) {
+        console.error('Error checking pending notification:', error);
       }
     };
 
-  useEffect(() => {
-    // التعامل مع الإشعار الذي فتح التطبيق (Cold Start)
-    notifee.getInitialNotification().then(initialNotification => {
-      if (initialNotification) {
-        console.log('App opened from notification:', initialNotification.notification.data);
-        handleNotificationData(initialNotification.notification.data);
-      }
+    checkPendingNotification();
+
+    // الاستماع لأحداث التركيز (Focus) للتحقق من الإشعارات المعلقة
+    const focusUnsubscribe = navigation.addListener('focus', () => {
+      checkPendingNotification();
     });
 
     // الاستماع للإشعارات أثناء تشغيل التطبيق (Foreground)
@@ -204,8 +423,18 @@ const HomeScreen: React.FC = () => {
       }
     });
 
-    return () => unsubscribe();
-  }, [userGroups]);
+    // الاستماع لفتح الإشعار من الخلفية (FCM Native)
+    const messagingUnsubscribe = messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log('Notification caused app to open from background state (FCM):', remoteMessage.data);
+      if (remoteMessage.data) {
+        handleNotificationData(remoteMessage.data);
+      }
+    });
+
+    return () => {
+      focusUnsubscribe();
+    };
+  }, [user, userGroups, handleNotificationData, navigation]);
 
   useEffect(() => {
     loadUserData();
@@ -213,68 +442,7 @@ const HomeScreen: React.FC = () => {
       loadWelcomeMessage();
       fetchAlbums();
     }
-  }, [user, activeTab, selectedGroup]);
-
-  const fetchAlbums = async () => {
-    if (!user) return;
-    setLoadingAlbums(true);
-    try {
-      let query = supabase.from('photos').select('hashtags');
-
-      if (activeTab === 'shared' && selectedGroup) {
-        query = query.eq('group_id', selectedGroup.id);
-      } else {
-        query = query.is('group_id', null).eq('user_id', user.id);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      const tags = new Set<string>();
-      data?.forEach((photo: any) => {
-        photo.hashtags?.forEach((tag: string) => {
-          if (tag?.trim()) tags.add(tag.trim());
-        });
-      });
-
-      const actualAlbums = Array.from(tags).map((tag, index) => ({
-        id: `album-${index}`,
-        name: tag
-      }));
-
-      setAlbums(actualAlbums);
-    } catch (error) {
-      console.error('Error fetching albums:', error);
-    } finally {
-      setLoadingAlbums(false);
-    }
-  };
-
-  const loadWelcomeMessage = async () => {
-    if (!user?.id) return;
-    try {
-      const profile = await ProfileService.getProfile(user.id);
-      if (profile?.user_welcome_message) {
-        setWelcomeMessage(profile.user_welcome_message);
-      }
-    } catch (error) {
-      console.error('Error loading welcome message:', error);
-    }
-  };
-
-  const loadUserData = async () => {
-    if (!user) return;
-    
-    try {
-      setIsLoading(true);
-      const groups = await GroupsService.getUserGroups();
-      setUserGroups(groups);
-    } catch (error) {
-      console.error('Error loading groups:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [user, activeTab, selectedGroup, loadUserData, loadWelcomeMessage, fetchAlbums]);
 
   const handleCreatePhoto = async (content: string, imageUri?: string, hashtags?: string[]) => {
     try {
@@ -316,14 +484,14 @@ const HomeScreen: React.FC = () => {
         });
         setShowAlertDialog(true);
       }
-      
+
       // Trigger PhotoGrid refresh
       setPhotosKey(prev => prev + 1);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating photo:', error);
       setAlertDialogProps({
         title: 'خطأ',
-        message: 'حدث خطأ أثناء إنشاء الصورة',
+        message: error.message || 'حدث خطأ أثناء إنشاء الصورة',
         type: 'danger',
         onConfirm: () => setShowAlertDialog(false),
       });
@@ -352,26 +520,14 @@ const HomeScreen: React.FC = () => {
 
   const handleCreateGroup = async () => {
     console.log('handleCreateGroup called with name:', newGroupName);
-    
+
     if (!newGroupName || newGroupName.trim().length < 2) {
-      setAlertDialogProps({
-        title: 'خطأ',
-        message: 'اسم المجموعة يجب أن يكون حرفين على الأقل',
-        type: 'danger',
-        onConfirm: () => setShowAlertDialog(false),
-      });
-      setShowAlertDialog(true);
+      showToast({ message: 'اسم المجموعة يجب أن يكون حرفين على الأقل', type: 'warning' });
       return;
     }
 
     if (!user) {
-      setAlertDialogProps({
-        title: 'خطأ',
-        message: 'يجب تسجيل الدخول أولاً',
-        type: 'danger',
-        onConfirm: () => setShowAlertDialog(false),
-      });
-      setShowAlertDialog(true);
+      showToast({ message: 'يجب تسجيل الدخول أولاً', type: 'error' });
       return;
     }
 
@@ -380,18 +536,18 @@ const HomeScreen: React.FC = () => {
       console.log('Creating group with name:', newGroupName.trim());
       const group = await GroupsService.createGroup(newGroupName.trim());
       console.log('Group created successfully:', group);
-      
+
       if (group) {
         // تحديث قائمة المجموعات
         await loadUserData();
-        
+
         setSelectedGroup(group);
         setActiveTab('shared');
         setShowCreateGroupModal(false);
         setNewGroupName('');
         setCreatedGroupInfo(group);
         setShowCreatedGroupModal(true);
-        
+
         // تحديث مفتاح الصور لإعادة تحميلها
         setPhotosKey(prev => prev + 1);
       } else {
@@ -399,13 +555,10 @@ const HomeScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error in handleCreateGroup:', error);
-      setAlertDialogProps({
-        title: 'خطأ في الإنشاء',
-        message: error?.message || 'تعذر إنشاء المجموعة. تأكد من اتصالك بالإنترنت وحاول مرة أخرى',
-        type: 'danger',
-        onConfirm: () => setShowAlertDialog(false),
+      showToast({ 
+        message: error?.message || 'تعذر إنشاء المجموعة. تأكد من اتصالك بالإنترنت وحاول مرة أخرى', 
+        type: 'error' 
       });
-      setShowAlertDialog(true);
     } finally {
       setIsLoading(false);
     }
@@ -432,20 +585,14 @@ const HomeScreen: React.FC = () => {
   const copyToClipboard = async (text: string) => {
     try {
       if (!text) return;
-      
+
       console.log('Attempting to copy to clipboard:', text);
       Clipboard.setString(text);
-      
+
       if (Platform.OS === 'android') {
-        ToastAndroid.show('تم نسخ الكود بنجاح ✅', ToastAndroid.SHORT);
+        showToast({ message: 'تم نسخ الكود بنجاح ✅', type: 'success' });
       } else {
-        setAlertDialogProps({
-          title: 'تم النسخ!',
-          message: 'تم نسخ الكود إلى الحافظة',
-          type: 'info',
-          onConfirm: () => setShowAlertDialog(false),
-        });
-        setShowAlertDialog(true);
+        showToast({ message: 'تم نسخ الكود إلى الحافظة', type: 'success' });
       }
     } catch (error) {
       console.error('Clipboard error:', error);
@@ -455,26 +602,14 @@ const HomeScreen: React.FC = () => {
           message: text,
         });
       } catch (shareError) {
-        setAlertDialogProps({
-          title: 'خطأ',
-          message: 'تعذر نسخ الكود',
-          type: 'danger',
-          onConfirm: () => setShowAlertDialog(false),
-        });
-        setShowAlertDialog(true);
+        showToast({ message: 'تعذر نسخ الكود', type: 'error' });
       }
     }
   };
 
   const handleJoinGroup = async () => {
     if (!joinInviteCode || joinInviteCode.trim().length < 6) {
-      setAlertDialogProps({
-        title: 'خطأ',
-        message: 'كود الدعوة يجب أن يكون 6 أحرف على الأقل',
-        type: 'danger',
-        onConfirm: () => setShowAlertDialog(false),
-      });
-      setShowAlertDialog(true);
+      showToast({ message: 'كود الدعوة يجب أن يكون 6 أحرف على الأقل', type: 'warning' });
       return;
     }
 
@@ -491,13 +626,7 @@ const HomeScreen: React.FC = () => {
       setShowJoinGroupModal(false);
       setJoinInviteCode('');
     } catch (error: any) {
-      setAlertDialogProps({
-        title: 'خطأ',
-        message: error.message || 'تعذر الانضمام للمساحة',
-        type: 'danger',
-        onConfirm: () => setShowAlertDialog(false),
-      });
-      setShowAlertDialog(true);
+      showToast({ message: error.message || 'تعذر الانضمام للمساحة', type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -506,19 +635,19 @@ const HomeScreen: React.FC = () => {
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-      <LinearGradient 
-        colors={[Colors.authGradientStart, Colors.authGradientMiddle, Colors.authGradientEnd]} 
+
+      <LinearGradient
+        colors={[Colors.authGradientStart, Colors.authGradientMiddle, Colors.authGradientEnd]}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea}>
           {/* Sidebar Drawer */}
-          <Animated.View 
+          <Animated.View
             style={[
               styles.sidebarDrawer,
-              { 
+              {
                 width: drawerWidth,
-                transform: [{ translateX: drawerAnimation }] 
+                transform: [{ translateX: drawerAnimation }]
               }
             ]}
           >
@@ -526,40 +655,65 @@ const HomeScreen: React.FC = () => {
               <View style={styles.centeredLogo}>
                 <HeartLogo size="small" animated={false} />
               </View>
+              <Text style={styles.sidebarVersionText}>الإصدار 1.0.5</Text>
             </View>
 
             <ScrollView style={styles.sidebarContent}>
               <View style={styles.sidebarUserSection}>
+                <View style={[styles.sidebarAvatarContainer, { overflow: 'hidden', borderRadius: 30 }]}>
+                  {avatarUrl ? (
+                    <Image source={{ uri: avatarUrl }} style={{ width: 60, height: 60 }} />
+                  ) : (
+                    <View style={styles.sidebarAvatarPlaceholder}>
+                      <Text style={styles.sidebarAvatarText}>
+                        {(user?.user_metadata?.full_name || user?.email || 'م').charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <View style={styles.sidebarUserInfo}>
                   <Text style={styles.sidebarUserName}>
                     {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
                   </Text>
                   <Text style={styles.sidebarUserEmail}>{user?.email}</Text>
+
+                  <TouchableOpacity
+                    style={styles.sidebarSettingsMini}
+                    onPress={() => {
+                      toggleDrawer(false);
+                      navigation.navigate('Profile' as never);
+                    }}
+                  >
+                    <Icon name="settings-outline" size={16} color="rgba(255,255,255,0.7)" />
+                    <Text style={styles.sidebarSettingsMiniText}>الإعدادات العامة</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
 
               <View style={styles.sidebarDivider} />
-              
+
               <View style={styles.sidebarAlbumsSection}>
                 <Text style={styles.sidebarSectionTitle}>
                   {activeTab === 'personal' ? 'ألبوماتي الشخصية' : `ألبومات ${selectedGroup?.name || 'المساحة المشتركة'}`}
                 </Text>
-                
+
                 {loadingAlbums ? (
                   <ActivityIndicator color={Colors.primary} size="small" style={{ marginVertical: 20 }} />
                 ) : albums.length > 0 ? (
-                  albums.map((album, index) => (
-                    <TouchableOpacity 
-                      key={album.id} 
+                  albums.map((album, _index) => (
+                    <TouchableOpacity
+                      key={album.id}
                       style={styles.sidebarAlbumItem}
                       onPress={() => {
                         toggleDrawer(false);
                         (navigation.navigate as any)('Main', { selectedHashtag: album.name });
                       }}
                     >
-                      <View style={styles.sidebarAlbumIndicator} />
+                      <View style={styles.albumIconContainer}>
+                        <Icon name="images-outline" size={20} color="#ea384c" />
+                      </View>
                       <Text style={styles.sidebarAlbumText}>{album.name}</Text>
-                      <Icon name="chevron-back" size={14} color="rgba(255,255,255,0.3)" />
+                      <Icon name="chevron-back" size={16} color="rgba(255,255,255,0.3)" />
                     </TouchableOpacity>
                   ))
                 ) : (
@@ -567,20 +721,11 @@ const HomeScreen: React.FC = () => {
                 )}
               </View>
 
-              <View style={styles.sidebarDivider} />
 
-              <TouchableOpacity 
-                style={styles.sidebarItem}
-                onPress={() => {
-                  toggleDrawer(false);
-                  navigation.navigate('Profile' as never);
-                }}
-              >
-                <Icon name="person-outline" size={22} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.sidebarItemText}>إعدادات عامة</Text>
-              </TouchableOpacity>
 
-              <TouchableOpacity 
+
+
+              <TouchableOpacity
                 style={styles.sidebarLogoutButton}
                 onPress={handleLogout}
               >
@@ -592,7 +737,7 @@ const HomeScreen: React.FC = () => {
 
           {/* Backdrop when drawer is open */}
           {isDrawerOpen && (
-            <TouchableOpacity 
+            <TouchableOpacity
               activeOpacity={1}
               style={styles.drawerBackdrop}
               onPress={() => toggleDrawer(false)}
@@ -600,16 +745,20 @@ const HomeScreen: React.FC = () => {
           )}
 
           {showNotifications && (
-            <TouchableOpacity 
-              style={styles.dropdownBackdrop} 
-              activeOpacity={1} 
+            <TouchableOpacity
+              style={styles.dropdownBackdrop}
+              activeOpacity={1}
               onPress={() => setShowNotifications(false)}
             >
               <NotificationsPopup
                 userId={user?.id || ''}
                 onClose={() => setShowNotifications(false)}
-                onNotificationPress={(notification) => {
-                  handleNotificationData({
+                onNotificationPress={async (notification) => {
+                  // إغلاق قائمة الإشعارات أولاً
+                  setShowNotifications(false);
+
+                  // ثم التعامل مع الإشعار
+                  await handleNotificationData({
                     ...notification.data,
                     group_id: notification.group_id,
                     type: notification.type
@@ -620,13 +769,13 @@ const HomeScreen: React.FC = () => {
           )}
 
           {showUserDropdown && (
-            <TouchableOpacity 
-              style={styles.dropdownBackdrop} 
-              activeOpacity={1} 
+            <TouchableOpacity
+              style={styles.dropdownBackdrop}
+              activeOpacity={1}
               onPress={() => setShowUserDropdown(false)}
             >
               <View style={styles.userDropdownOverlay}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.closeDropdownButton}
                   onPress={() => setShowUserDropdown(false)}
                 >
@@ -635,9 +784,9 @@ const HomeScreen: React.FC = () => {
                 <View style={styles.userDropdownContent}>
                   <Text style={styles.userDropdownName}>{user?.user_metadata?.full_name || user?.email?.split('@')[0]}</Text>
                   <Text style={styles.userDropdownEmail}>{user?.email}</Text>
-                  
-                  
-                  <TouchableOpacity 
+
+
+                  <TouchableOpacity
                     style={styles.logoutButton}
                     onPress={handleLogout}
                   >
@@ -651,21 +800,32 @@ const HomeScreen: React.FC = () => {
             </TouchableOpacity>
           )}
 
-          <ScrollView 
+          <ScrollView
+            ref={scrollViewRef}
             style={styles.mainScrollView}
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.topBar}>
-              <TouchableOpacity 
-                style={styles.topButton} 
+              <TouchableOpacity
+                style={styles.topButton}
                 onPress={() => setShowUserDropdown(!showUserDropdown)}
               >
-                <Icon name="person-circle-outline" size={22} color="#FFFFFF" />
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                ) : (
+                  <Icon name="person-circle-outline" size={32} color="#FFFFFF" />
+                )}
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.topButton, { marginLeft: 10 }]} 
-                onPress={() => setShowNotifications(!showNotifications)}
+              <TouchableOpacity
+                style={[styles.topButton, { marginLeft: 10 }]}
+                onPress={() => {
+                  if (!showNotifications) {
+                    // إذا كان سيتم فتح القائمة، قم بتعليم الكل كمقروء
+                    markAllAsRead();
+                  }
+                  setShowNotifications(!showNotifications);
+                }}
               >
                 <Icon name="notifications-outline" size={22} color="#FFFFFF" />
                 {unreadCount > 0 && (
@@ -676,11 +836,11 @@ const HomeScreen: React.FC = () => {
                   </View>
                 )}
               </TouchableOpacity>
-              
+
               <View style={styles.spacer} />
-              
-              <TouchableOpacity 
-                style={styles.topButton} 
+
+              <TouchableOpacity
+                style={styles.topButton}
                 onPress={() => toggleDrawer(true)}
               >
                 <Icon name="menu-outline" size={26} color="#FFFFFF" />
@@ -699,7 +859,7 @@ const HomeScreen: React.FC = () => {
                 }
               </Text>
               {activeTab === 'shared' && selectedGroup && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.infoButton}
                   onPress={() => setShowGroupInfo(true)}
                 >
@@ -712,7 +872,7 @@ const HomeScreen: React.FC = () => {
               <View style={styles.noGroupSelectedContainer}>
                 <Icon name="people-outline" size={60} color="rgba(255,255,255,0.3)" />
                 <Text style={styles.noGroupSelectedText}>اختر مساحة مشتركة للبدء في مشاركة اللحظات</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.selectGroupButton}
                   onPress={() => setShowSharedSpacesModal(true)}
                 >
@@ -722,8 +882,8 @@ const HomeScreen: React.FC = () => {
             )}
 
             {(activeTab === 'personal' || (activeTab === 'shared' && selectedGroup)) && (
-              <TouchableOpacity 
-                style={styles.addButton} 
+              <TouchableOpacity
+                style={styles.addButton}
                 onPress={() => setShowCreateDialog(true)}
                 activeOpacity={0.85}
               >
@@ -741,38 +901,45 @@ const HomeScreen: React.FC = () => {
             )}
 
             {(activeTab === 'personal' || (activeTab === 'shared' && selectedGroup)) && (
-              <PhotoGrid 
-                key={`${activeTab}-${selectedGroup?.id || 'personal'}-${photosKey}-${route.params?.selectedHashtag || 'none'}`}
-                currentUserId={user?.id || ''}
-                currentUser={user ? {
-                  id: user.id,
-                  email: user.email,
-                  full_name: user.user_metadata?.full_name
-                } : undefined}
-                selectedGroupId={activeTab === 'shared' ? selectedGroup?.id || null : null}
-                onPhotoAdded={() => setPhotosKey(prev => prev + 1)}
-                embedded={true}
-                navigation={navigation as any}
-                initialHashtag={route.params?.selectedHashtag}
-              />
+              <View onLayout={(event) => { photoGridOffset.current = event.nativeEvent.layout.y; }}>
+                <PhotoGrid
+                  key={`${activeTab}-${selectedGroup?.id || 'personal'}-${photosKey}-${route.params?.selectedHashtag || 'none'}-${notificationTargetPhotoId || 'none'}`}
+                  currentUserId={user?.id || ''}
+                  currentUser={user ? {
+                    id: user.id,
+                    full_name: user?.user_metadata?.full_name,
+                    email: user.email,
+                    avatar_url: avatarUrl || undefined
+                  } : undefined}
+                  selectedGroupId={activeTab === 'shared' ? selectedGroup?.id || null : null}
+                  onPhotoAdded={() => setPhotosKey(prev => prev + 1)}
+                  embedded={true}
+                  navigation={navigation as any}
+                  initialHashtag={route.params?.selectedHashtag}
+                  initialPhotoId={notificationTargetPhotoId}
+                  initialCommentId={notificationTargetCommentId}
+                  initialParentCommentId={notificationTargetParentCommentId}
+                  onScrollRequest={handleScrollRequest}
+                />
+              </View>
             )}
           </ScrollView>
 
           <View style={styles.bottomNavContainer}>
-            <TouchableOpacity 
-              style={[styles.navItem, activeTab === 'personal' && styles.navItemActive]}
-              onPress={() => setActiveTab('personal')}
-            >
-              <Icon name="person-outline" size={24} color={activeTab === 'personal' ? '#FFFFFF' : 'rgba(255,255,255,0.5)'} />
-              <Text style={[styles.navText, activeTab === 'personal' && styles.navTextActive]}>المساحة الشخصية</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.navItem, activeTab === 'shared' && styles.navItemActive]}
               onPress={() => setShowSharedSpacesModal(true)}
             >
               <Icon name="people-outline" size={24} color={activeTab === 'shared' ? '#FFFFFF' : 'rgba(255,255,255,0.5)'} />
               <Text style={[styles.navText, activeTab === 'shared' && styles.navTextActive]}>المساحات المشتركة</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.navItem, activeTab === 'personal' && styles.navItemActive]}
+              onPress={() => setActiveTab('personal')}
+            >
+              <Icon name="person-outline" size={24} color={activeTab === 'personal' ? '#FFFFFF' : 'rgba(255,255,255,0.5)'} />
+              <Text style={[styles.navText, activeTab === 'personal' && styles.navTextActive]}>المساحة الشخصية</Text>
             </TouchableOpacity>
           </View>
 
@@ -783,8 +950,8 @@ const HomeScreen: React.FC = () => {
 
           {/* Floating Add Button (FAB) - يظهر دائماً في أسفل اليسار */}
           {(activeTab === 'personal' || (activeTab === 'shared' && selectedGroup)) && (
-            <TouchableOpacity 
-              style={styles.fabButton} 
+            <TouchableOpacity
+              style={styles.fabButton}
               onPress={() => setShowCreateDialog(true)}
               activeOpacity={0.8}
             >
@@ -803,6 +970,7 @@ const HomeScreen: React.FC = () => {
         visible={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
         onSubmit={handleCreatePhoto}
+        selectedGroupId={activeTab === 'shared' && selectedGroup ? selectedGroup.id : null}
       />
 
       {/* Group Chat Window */}
@@ -823,9 +991,9 @@ const HomeScreen: React.FC = () => {
         onRequestClose={() => setShowSharedSpacesModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
-            style={StyleSheet.absoluteFill} 
-            activeOpacity={1} 
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
             onPress={() => setShowSharedSpacesModal(false)}
           />
           <View style={styles.sharedSpacesModal}>
@@ -835,8 +1003,8 @@ const HomeScreen: React.FC = () => {
                 <Icon name="close" size={26} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            
-            <ScrollView 
+
+            <ScrollView
               style={styles.modalScrollView}
               contentContainerStyle={styles.modalScrollViewContent}
               showsVerticalScrollIndicator={false}
@@ -864,7 +1032,15 @@ const HomeScreen: React.FC = () => {
                   >
                     <View style={styles.groupItemLeft}>
                       <View style={styles.groupIconCircle}>
-                        <Icon name="people" size={20} color="#FFFFFF" />
+                        {group.latest_photo_url ? (
+                          <Image
+                            source={{ uri: group.latest_photo_url }}
+                            style={styles.groupCoverImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Icon name="people" size={20} color="#FFFFFF" />
+                        )}
                       </View>
                       <View style={styles.groupItemTextContainer}>
                         <Text style={styles.groupItemName}>{group.name}</Text>
@@ -879,11 +1055,11 @@ const HomeScreen: React.FC = () => {
                   </TouchableOpacity>
                 ))
               )}
-              
+
               <View style={styles.modalDivider} />
-              
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.createButton]} 
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.createButton]}
                 onPress={() => {
                   console.log('Create group button pressed');
                   setShowSharedSpacesModal(false);
@@ -898,9 +1074,9 @@ const HomeScreen: React.FC = () => {
                   <Icon name="add-circle-outline" size={22} color="#66bb6a" style={styles.buttonIcon} />
                 </View>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.joinButton]} 
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.joinButton]}
                 onPress={() => {
                   console.log('Join group button pressed');
                   setShowSharedSpacesModal(false);
@@ -934,11 +1110,11 @@ const HomeScreen: React.FC = () => {
                 <Icon name="close-circle-outline" size={26} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>اسم المساحة:</Text>
               <Text style={styles.infoValue}>{selectedGroup?.name}</Text>
-              
+
               <Text style={styles.infoLabel}>كود الدعوة:</Text>
               <View style={[styles.inviteCodeContainer, styles.inviteCodeRow]}>
                 <TextInput
@@ -959,8 +1135,8 @@ const HomeScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
               <Text style={styles.infoHint}>شارك هذا الكود مع أصدقائك لينضموا إليك</Text>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: '#ea384c', marginTop: 20 }]}
                 onPress={() => setShowGroupInfo(false)}
               >
@@ -995,8 +1171,8 @@ const HomeScreen: React.FC = () => {
                 autoFocus
                 textAlign="right"
               />
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.createButton, { marginTop: 20 }]} 
+              <TouchableOpacity
+                style={[styles.actionButton, styles.createButton, { marginTop: 20 }]}
                 onPress={handleCreateGroup}
                 disabled={isLoading}
               >
@@ -1053,7 +1229,7 @@ const HomeScreen: React.FC = () => {
                   keyboardType="default"
                   autoCapitalize="none"
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.inputActionButton}
                   onPress={handlePasteInviteCode}
                 >
@@ -1061,8 +1237,8 @@ const HomeScreen: React.FC = () => {
                   <Text style={styles.inputActionText}>لصق</Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.joinButton, { marginTop: 20 }]} 
+              <TouchableOpacity
+                style={[styles.actionButton, styles.joinButton, { marginTop: 20 }]}
                 onPress={handleJoinGroup}
                 disabled={isLoading}
               >
@@ -1091,7 +1267,7 @@ const HomeScreen: React.FC = () => {
                 <Icon name="close" size={24} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.infoContent}>
               <View style={{ alignItems: 'center', marginBottom: 20 }}>
                 <Icon name="checkmark-circle" size={80} color="#66bb6a" />
@@ -1099,14 +1275,14 @@ const HomeScreen: React.FC = () => {
 
               <Text style={styles.infoLabel}>اسم المساحة:</Text>
               <Text style={styles.infoValue}>{createdGroupInfo?.name}</Text>
-              
+
               <Text style={styles.infoLabel}>كود الدعوة:</Text>
               <View style={styles.inviteCodeContainer}>
                 <Text style={styles.inviteCodeText}>
                   {createdGroupInfo?.invite_code}
                 </Text>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.copyButton}
                   onPress={() => copyToClipboard(createdGroupInfo?.invite_code ?? '')}
                 >
@@ -1114,12 +1290,12 @@ const HomeScreen: React.FC = () => {
                   <Text style={styles.copyButtonText}>نسخ كود الدعوة</Text>
                 </TouchableOpacity>
               </View>
-              
+
               <Text style={[styles.infoHint, { color: 'rgba(255,255,255,0.6)', textAlign: 'center', fontSize: 14, lineHeight: 20 }]}>
                 شارك هذا الكود مع أصدقائك لينضموا إليك في هذه المساحة المشتركة
               </Text>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: 'rgba(255,255,255,0.1)', marginTop: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }]}
                 onPress={() => setShowCreatedGroupModal(false)}
               >
@@ -1364,15 +1540,24 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   sidebarHeader: {
-    paddingTop: 30,
-    paddingBottom: 20,
+    paddingTop: 40,
+    paddingBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 0,
   },
   centeredLogo: {
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    transform: [{ scale: 0.8 }],
+    marginTop: -10,
+  },
+  sidebarVersionText: {
+    color: 'rgba(255, 255, 255, 0.3)',
+    fontSize: 10,
+    marginTop: -30,
+    fontWeight: '500',
   },
   sidebarContent: {
     flex: 1,
@@ -1382,8 +1567,43 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 10,
   },
+  sidebarAvatarContainer: {
+    width: 60,
+    height: 60,
+    marginBottom: 15,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sidebarAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ea384c',
+  },
+  sidebarAvatarText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
   sidebarUserInfo: {
     alignItems: 'center',
+  },
+  sidebarSettingsMini: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginTop: 12,
+  },
+  sidebarSettingsMiniText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    marginRight: 6,
+    fontWeight: '600',
   },
   sidebarSectionTitle: {
     color: 'rgba(255, 255, 255, 0.4)',
@@ -1400,16 +1620,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderLeftWidth: 3,
-    borderLeftColor: 'transparent',
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  sidebarAlbumIndicator: {
-    width: 4,
-    height: 20,
-    backgroundColor: '#ea384c',
-    borderRadius: 2,
-    marginLeft: 15,
+  albumIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(234, 56, 76, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
   },
   sidebarAlbumText: {
     flex: 1,
@@ -1700,16 +1926,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   modalHeader: {
-    flexDirection: 'row-reverse', 
+    flexDirection: 'row-reverse',
     justifyContent: 'space-between',
-    alignItems: 'center', 
+    alignItems: 'center',
     marginBottom: 12,
     paddingHorizontal: 8,
-  }, 
+  },
   modalTitle: {
-    color: '#FFFFFF', 
+    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: 'bold', 
+    fontWeight: 'bold',
   },
   groupItem: {
     flexDirection: 'row-reverse',
@@ -1720,26 +1946,31 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   groupItemLeft: {
-    flexDirection: 'row-reverse', 
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     flex: 1,
   },
   selectedGroupItem: {
     backgroundColor: 'rgba(234, 56, 76, 0.2)',
-    borderColor: '#ea384c', 
+    borderColor: '#ea384c',
     borderWidth: 1,
   },
   groupIconCircle: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#ea384c', 
+    backgroundColor: '#ea384c',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 10,
   },
+  groupCoverImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
   groupItemTextContainer: {
-    marginRight: 0, 
+    marginRight: 0,
     alignItems: 'flex-end',
   },
   groupItemName: {

@@ -16,9 +16,10 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useNotifications } from '../hooks/useNotifications';
 import { AppNotification } from '../services/notifications';
+import { NotificationNavigationService } from '../services/notificationNavigation';
 
 const NotificationsListScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
   const {
     notifications,
@@ -68,8 +69,25 @@ const NotificationsListScreen: React.FC = () => {
     if (!notification.is_read) {
       await markAsRead(notification.id);
     }
-    // يمكن إضافة التنقل للمكان المناسب حسب نوع الإشعار
-  }, [markAsRead]);
+
+    const data = notification.data || {};
+    const photoId = (data as any).photo_id || (data as any).photoId;
+    const commentId = (data as any).comment_id;
+    const parentCommentId = (data as any).parent_comment_id;
+
+    if (notification.group_id || photoId) {
+      await NotificationNavigationService.savePendingNotification({
+        group_id: notification.group_id,
+        type: notification.type,
+        notification_id: notification.id,
+        photo_id: photoId,
+        comment_id: commentId,
+        parent_comment_id: parentCommentId,
+      });
+
+      navigation.navigate('Main');
+    }
+  }, [markAsRead, navigation]);
 
   const renderNotification = ({ item }: { item: AppNotification }) => {
     const icon = getNotificationIcon(item.type);

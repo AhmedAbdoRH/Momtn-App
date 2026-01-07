@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { Spacing, BorderRadius } from '../theme';
+import { useToast } from '../src/providers/ToastProvider';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -35,6 +36,9 @@ export interface Comment {
   likes?: number;
   liked_by?: string;
   user: CommentUser;
+  isReply?: boolean;
+  parentCommentId?: string;
+  replyAuthorName?: string | null;
 }
 
 export interface Photo {
@@ -51,6 +55,7 @@ export interface Photo {
   ownerId?: string;
   photoOwnerId?: string;
   user_id?: string;
+  group_id?: string | null;
   userEmail?: string;
   userDisplayName?: string | null;
   comments?: Comment[];
@@ -81,6 +86,9 @@ interface PhotoCardProps {
   selectedGroupId?: string | null;
   dragHandleProps?: any;
   onPress?: () => void;
+  autoOpenComments?: boolean;
+  initialCommentId?: string | null;
+  initialParentCommentId?: string | null;
 }
 
 const PhotoCard: React.FC<PhotoCardProps> = ({
@@ -92,7 +100,11 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
   onLikeComment,
   onDeleteComment,
   currentUserId,
+  autoOpenComments,
+  initialCommentId,
+  initialParentCommentId,
 }) => {
+  const { showToast } = useToast();
   // States
   const [isLiked, setIsLiked] = useState(false);
   const [likes, setLikes] = useState(photo.likes || 0);
@@ -105,7 +117,13 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<Comment[]>(photo.comments || []);
   const [isCommentLoading, setIsCommentLoading] = useState(false);
+  const [replyToCommentId, setReplyToCommentId] = useState<string | null>(null);
+  const [replyToAuthorName, setReplyToAuthorName] = useState<string | null>(null);
   const [imageHeight, setImageHeight] = useState(200);
+  const commentsScrollRef = useRef<ScrollView | null>(null);
+  const commentLayoutPositions = useRef<Record<string, number>>({});
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
+  const [highlightedReplyId, setHighlightedReplyId] = useState<string | null>(null);
   
   // Animations
   const heartScale = useState(new Animated.Value(1))[0];
@@ -138,6 +156,12 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
       );
     }
   }, [imageSource]);
+
+  useEffect(() => {
+    if (autoOpenComments && comments.length > 0) {
+      setShowComments(true);
+    }
+  }, [autoOpenComments, comments.length]);
 
   // Handle like with animation
   const handleLike = () => {
@@ -177,10 +201,17 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
     
     setIsCommentLoading(true);
     try {
-      await onAddComment(newComment.trim());
+      let content = newComment.trim();
+      if (replyToCommentId && replyToAuthorName) {
+        content = `@reply|${replyToCommentId}|${replyToAuthorName}|${content}`;
+      }
+      await onAddComment(content);
       setNewComment('');
-    } catch (error) {
-      Alert.alert('خطأ', 'حدث خطأ أثناء إضافة التعليق');
+      setReplyToCommentId(null);
+      setReplyToAuthorName(null);
+      showToast({ message: 'تم إضافة تعليقك بنجاح', type: 'success' });
+    } catch (error: any) {
+      showToast({ message: 'فشل إضافة التعليق: ' + error.message, type: 'error' });
     } finally {
       setIsCommentLoading(false);
     }
@@ -207,12 +238,15 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
     );
   };
 
-  // Handle save caption
-  const handleSaveCaption = async () => {
-    if (onUpdateCaption) {
-      await onUpdateCaption(caption, hashtags);
+  // Handle update caption
+  const handleUpdateCaption = async () => {
+    try {
+      await onUpdateCaption?.(caption, hashtags);
+      setShowEditModal(false);
+      showToast({ message: 'تم تحديث الوصف بنجاح', type: 'success' });
+    } catch (error: any) {
+      showToast({ message: 'فشل تحديث الوصف: ' + error.message, type: 'error' });
     }
-    setShowEditModal(false);
   };
 
   // Format date
@@ -245,6 +279,76 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
     outputRange: [0.6, 0],
   });
 
+  const parsedComments: Comment[] = comments.map((comment) => {
+    if (comment.content.startsWith('@reply|')) {
+      const parts = comment.content.split('|');
+      if (parts.length >= 4) {
+        const [, parentId, authorName, ...bodyParts] = parts;
+        const body = bodyParts.join('|');
+        return {
+          ...comment,
+          isReply: true,
+          parentCommentId: parentId,
+          replyAuthorName: authorName,
+          content: body,
+        };
+      }
+    }
+    return {
+      ...comment,
+      isReply: false,
+      parentCommentId: undefined,
+      replyAuthorName: undefined,
+    };
+  });
+
+  const repliesByParent = new Map<string, Comment[]>();
+  parsedComments.forEach((comment) => {
+    if (comment.isReply && comment.parentCommentId) {
+      const list = repliesByParent.get(comment.parentCommentId) || [];
+      list.push(comment);
+      repliesByParent.set(comment.parentCommentId, list);
+    }
+  });
+
+  const parentComments = parsedComments.filter(
+    (comment) => !comment.isReply || !comment.parentCommentId
+  );
+
+  useEffect(() => {
+    if (!autoOpenComments) {
+      return;
+    }
+
+    const targetId = initialCommentId;
+    if (!targetId) {
+      return;
+    }
+
+    const targetComment = parsedComments.find(c => c.id === targetId);
+    if (!targetComment) {
+      return;
+    }
+
+    const parentId = initialParentCommentId || (targetComment.isReply && targetComment.parentCommentId ? targetComment.parentCommentId : targetComment.id);
+
+    setHighlightedCommentId(parentId);
+    if (targetComment.isReply && targetComment.id !== parentId) {
+      setHighlightedReplyId(targetComment.id);
+    } else {
+      setHighlightedReplyId(null);
+    }
+
+    const timeout = setTimeout(() => {
+      const y = commentLayoutPositions.current[parentId];
+      if (commentsScrollRef.current && typeof y === 'number') {
+        commentsScrollRef.current.scrollTo({ y: Math.max(0, y - 16), animated: true });
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [autoOpenComments, initialCommentId, initialParentCommentId, parsedComments]);
+
   return (
     <View style={styles.container}>
       {/* Main Card */}
@@ -253,22 +357,59 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
         onPress={() => setShowControls(!showControls)}
         style={styles.card}
       >
-        {/* Image */}
+        {/* Image / Text Content */}
         <View style={[styles.imageContainer, { height: imageHeight }]}>
-          {imageSource ? (
+          {imageSource && imageSource.trim() !== '' ? (
             <Image
               source={{ uri: imageSource }}
               style={styles.image}
               resizeMode="cover"
             />
           ) : (
-            <View style={styles.placeholderContainer}>
-              <Icon name="image-outline" size={50} color="rgba(255,255,255,0.3)" />
-            </View>
+            <LinearGradient
+              colors={['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.03)']}
+              style={styles.textPostBackground}
+            >
+              <View style={styles.glassShine} />
+              
+              {/* اسم الألبوم وخيارات التعديل في الأعلى - يظهر فقط عند اللمس */}
+              <View style={styles.textPostHeaderInside}>
+                 {showControls && hashtags && hashtags.length > 0 ? (
+                    <View style={styles.albumBadge}>
+                       <Text style={styles.albumBadgeText}>{hashtags[0]}</Text>
+                    </View>
+                 ) : <View />}
+
+                 {currentUserId === photoOwnerId && showControls && (
+                    <TouchableOpacity
+                      style={styles.editButtonSmall}
+                      onPress={() => setShowOptionsMenu(true)}
+                    >
+                      <Icon name="ellipsis-vertical" size={16} color="#fff" />
+                    </TouchableOpacity>
+                 )}
+              </View>
+
+              <Text style={styles.textPostContent} numberOfLines={5}>
+                {caption || photo.content}
+              </Text>
+
+              {/* معلومات الكاتب والوقت في الأسفل - يظهر فقط عند اللمس */}
+              {showControls && (
+                <View style={styles.textPostFooter}>
+                  <View style={styles.ownerBadgeText}>
+                    <Text style={styles.ownerNameText}>{ownerName}</Text>
+                  </View>
+                  <Text style={styles.timestampText}>
+                    {photo.timestamp ? formatDate(photo.timestamp) : ''}
+                  </Text>
+                </View>
+              )}
+            </LinearGradient>
           )}
           
-          {/* Gradient Overlay */}
-          {showControls && (
+          {/* Gradient Overlay for images only */}
+          {showControls && imageSource && imageSource.trim() !== '' && (
             <LinearGradient
               colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
               style={styles.gradientOverlay}
@@ -276,8 +417,8 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
           )}
         </View>
 
-        {/* Options Menu Button - Only for owner */}
-        {currentUserId === photoOwnerId && showControls && (
+        {/* Options Menu Button - Only for owner (Removed from here for text posts as it is now inside the gradient) */}
+        {currentUserId === photoOwnerId && showControls && imageSource && imageSource.trim() !== '' && (
           <TouchableOpacity
             style={styles.optionsButton}
             onPress={() => setShowOptionsMenu(true)}
@@ -360,7 +501,20 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
       {/* Comments Section */}
       {showComments && (
         <View style={styles.commentsSection}>
-          {/* Add Comment Input */}
+          {replyToAuthorName && (
+            <View style={styles.replyInfoContainer}>
+              <Text style={styles.replyInfoText}>الرد على {replyToAuthorName}</Text>
+              <TouchableOpacity
+                style={styles.replyCancelButton}
+                onPress={() => {
+                  setReplyToCommentId(null);
+                  setReplyToAuthorName(null);
+                }}
+              >
+                <Icon name="close" size={14} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.addCommentContainer}>
             <TouchableOpacity
               style={[
@@ -387,11 +541,26 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
             />
           </View>
 
-          {/* Comments List */}
-          {comments.length > 0 ? (
-            <ScrollView style={styles.commentsList} nestedScrollEnabled>
-              {comments.map((comment) => (
-                <View key={comment.id} style={styles.commentItem}>
+          {parentComments.length > 0 ? (
+            <ScrollView
+              style={styles.commentsList}
+              nestedScrollEnabled
+              ref={commentsScrollRef}
+            >
+              {parentComments.map((comment) => {
+                const replies = repliesByParent.get(comment.id) || [];
+                const isHighlightedParent = highlightedCommentId === comment.id;
+                return (
+                <View
+                  key={comment.id}
+                  style={[
+                    styles.commentItem,
+                    isHighlightedParent && styles.highlightedCommentItem,
+                  ]}
+                  onLayout={event => {
+                    commentLayoutPositions.current[comment.id] = event.nativeEvent.layout.y;
+                  }}
+                >
                   <View style={styles.commentContent}>
                     <View style={styles.commentHeader}>
                       <Text style={styles.commentAuthor}>
@@ -418,6 +587,21 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
                           <Text style={styles.commentLikeCount}>{comment.likes}</Text>
                         )}
                       </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.commentReplyButton}
+                        onPress={() => {
+                          const name = getDisplayName(comment);
+                          setReplyToCommentId(comment.id);
+                          setReplyToAuthorName(name);
+                        }}
+                      >
+                        <Icon
+                          name="return-up-back-outline"
+                          size={14}
+                          color="rgba(255,255,255,0.6)"
+                        />
+                        <Text style={styles.commentReplyText}>رد</Text>
+                      </TouchableOpacity>
                       
                       {comment.user_id === currentUserId && (
                         <TouchableOpacity
@@ -428,9 +612,70 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
                         </TouchableOpacity>
                       )}
                     </View>
+                    {replies.length > 0 && (
+                      <View style={styles.repliesContainer}>
+                        {replies.map((reply) => (
+                          <View
+                            key={reply.id}
+                            style={[
+                              styles.replyItem,
+                              highlightedReplyId === reply.id && styles.highlightedReplyItem,
+                            ]}
+                          >
+                            <View style={styles.replyHeader}>
+                              <Text style={styles.replyAuthor}>
+                                {getDisplayName(reply)}
+                              </Text>
+                              <Text style={styles.replyTime}>
+                                {formatDate(reply.updated_at || reply.created_at)}
+                              </Text>
+                            </View>
+                            <Text style={styles.replyText}>{reply.content}</Text>
+                            <View style={styles.replyActions}>
+                              <TouchableOpacity
+                                style={styles.commentLikeButton}
+                                onPress={() => onLikeComment?.(reply.id)}
+                              >
+                                <Icon
+                                  name={reply.liked_by?.includes(currentUserId) ? 'heart' : 'heart-outline'}
+                                  size={14}
+                                  color={reply.liked_by?.includes(currentUserId) ? '#ea384c' : 'rgba(255,255,255,0.5)'}
+                                />
+                                {(reply.likes || 0) > 0 && (
+                                  <Text style={styles.commentLikeCount}>{reply.likes}</Text>
+                                )}
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.commentReplyButton}
+                                onPress={() => {
+                                  const name = getDisplayName(reply);
+                                  setReplyToCommentId(reply.id);
+                                  setReplyToAuthorName(name);
+                                }}
+                              >
+                                <Icon
+                                  name="return-up-back-outline"
+                                  size={14}
+                                  color="rgba(255,255,255,0.6)"
+                                />
+                                <Text style={styles.commentReplyText}>رد</Text>
+                              </TouchableOpacity>
+                              {reply.user_id === currentUserId && (
+                                <TouchableOpacity
+                                  style={styles.commentDeleteButton}
+                                  onPress={() => handleDeleteComment(reply.id)}
+                                >
+                                  <Icon name="trash-outline" size={14} color="rgba(255,255,255,0.4)" />
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 </View>
-              ))}
+              ); })}
             </ScrollView>
           ) : (
             <View style={styles.noCommentsContainer}>
@@ -523,7 +768,7 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.saveButton}
-                onPress={handleSaveCaption}
+                onPress={handleUpdateCaption}
               >
                 <Text style={styles.saveButtonText}>حفظ</Text>
               </TouchableOpacity>
@@ -550,6 +795,88 @@ const styles = StyleSheet.create({
   imageContainer: {
     width: '100%',
     backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  textPostBackground: {
+    flex: 1,
+    padding: Spacing.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    minHeight: 200,
+  },
+  glassShine: {
+    position: 'absolute',
+    top: -100,
+    left: -100,
+    width: 200,
+    height: 200,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 100,
+    transform: [{ rotate: '45deg' }],
+  },
+  textPostHeaderInside: {
+    position: 'absolute',
+    top: 15,
+    left: 15,
+    right: 15,
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  textPostContent: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 30,
+    paddingHorizontal: 10,
+  },
+  textPostFooter: {
+    position: 'absolute',
+    bottom: 15,
+    left: 15,
+    right: 15,
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  albumBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  albumBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  editButtonSmall: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ownerBadgeText: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  ownerNameText: {
+    color: '#fef08a',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  timestampText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 10,
   },
   image: {
     width: '100%',
@@ -719,6 +1046,13 @@ const styles = StyleSheet.create({
   commentItem: {
     marginBottom: Spacing.sm,
   },
+  highlightedCommentItem: {
+    backgroundColor: 'rgba(234, 56, 76, 0.15)',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(234, 56, 76, 0.3)',
+    padding: 2,
+  },
   commentContent: {
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: BorderRadius.md,
@@ -750,6 +1084,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 6,
   },
+  commentReplyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
+    marginLeft: 8,
+  },
+  commentReplyText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    marginLeft: 4,
+  },
   commentLikeButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -763,6 +1108,62 @@ const styles = StyleSheet.create({
   commentDeleteButton: {
     padding: 4,
     marginLeft: 12,
+  },
+  repliesContainer: {
+    marginTop: 8,
+    marginRight: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,255,255,0.1)',
+  },
+  replyItem: {
+    marginBottom: 6,
+    paddingLeft: 8,
+  },
+  highlightedReplyItem: {
+    backgroundColor: 'rgba(234, 56, 76, 0.2)',
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(234, 56, 76, 0.4)',
+    padding: 2,
+  },
+  replyHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  replyAuthor: {
+    color: '#bfdbfe',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  replyTime: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 9,
+  },
+  replyText: {
+    color: '#e5e7eb',
+    fontSize: 13,
+    textAlign: 'right',
+    lineHeight: 18,
+  },
+  replyActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  replyInfoContainer: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  replyInfoText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    marginLeft: 8,
+  },
+  replyCancelButton: {
+    padding: 4,
   },
   noCommentsContainer: {
     alignItems: 'center',

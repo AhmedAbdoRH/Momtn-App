@@ -16,26 +16,26 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../components/auth/AuthProvider';
+import { useToast } from '../providers/ToastProvider';
 import { supabase } from '../services/supabase';
 import { ProfileService } from '../services/profile';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { decode } from 'base64-arraybuffer';
+import { Image } from 'react-native';
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user, refreshUser } = useAuth();
-  
+  const { showToast } = useToast();
+
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '');
   const [greetingMessage, setGreetingMessage] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.user_metadata?.avatar_url || null);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => {
-    setFullName(user?.user_metadata?.full_name || '');
-    if (user?.id) {
-      loadProfileData();
-    }
-  }, [user]);
-
-  const loadProfileData = async () => {
+  const loadProfileData = React.useCallback(async () => {
     if (!user?.id) return;
     try {
       const profile = await ProfileService.getProfile(user.id);
@@ -46,15 +46,79 @@ const ProfileScreen: React.FC = () => {
         if (profile.full_name) {
           setFullName(profile.full_name);
         }
+        if (profile.avatar_url) {
+          setAvatarUrl(profile.avatar_url);
+        }
       }
     } catch (e) {
       console.warn('Could not load profile:', e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    setFullName(user?.user_metadata?.full_name || '');
+    setAvatarUrl(user?.user_metadata?.avatar_url || null);
+    if (user?.id) {
+      loadProfileData();
+    }
+  }, [user, loadProfileData]);
+
+  const handlePickImage = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.5,
+        includeBase64: true,
+      });
+
+      if (result.didCancel || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      if (!asset.base64 || !user?.id) return;
+
+      setUploadingImage(true);
+
+      const fileExt = asset.type?.split('/')[1] || 'jpg';
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, decode(asset.base64), {
+          contentType: asset.type,
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const publicUrl = data.publicUrl;
+
+      // Update locally and save immediately
+      setAvatarUrl(publicUrl);
+
+      await ProfileService.updateProfile(user.id, {
+        avatar_url: publicUrl
+      });
+
+      showToast({ message: 'تم تحديث الصورة الشخصية', type: 'success' });
+
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      showToast({ message: 'فشل في رفع الصورة', type: 'error' });
+    } finally {
+      setUploadingImage(false);
     }
   };
 
   const handleSave = async () => {
     if (!fullName.trim()) {
-      Alert.alert('خطأ', 'يرجى إدخال الاسم');
+      showToast({ message: 'يرجى إدخال الاسم', type: 'error' });
       return;
     }
 
@@ -62,9 +126,10 @@ const ProfileScreen: React.FC = () => {
     try {
       // Update Auth metadata
       const { error: authError } = await supabase.auth.updateUser({
-        data: { 
+        data: {
           full_name: fullName.trim(),
-          greeting_message: greetingMessage.trim()
+          greeting_message: greetingMessage.trim(),
+          avatar_url: avatarUrl
         }
       });
 
@@ -74,9 +139,10 @@ const ProfileScreen: React.FC = () => {
       if (user?.id) {
         await ProfileService.updateProfile(user.id, {
           full_name: fullName.trim(),
-          user_welcome_message: greetingMessage.trim()
+          user_welcome_message: greetingMessage.trim(),
+          avatar_url: avatarUrl
         });
-        
+
         // Save to AsyncStorage as backup
         try {
           await AsyncStorage.setItem(`userGreeting_${user.id}`, greetingMessage.trim());
@@ -90,10 +156,10 @@ const ProfileScreen: React.FC = () => {
         }
       }
 
-      Alert.alert('تم الحفظ', 'تم تحديث الملف الشخصي بنجاح');
+      showToast({ message: 'تم تحديث الملف الشخصي بنجاح', type: 'success' });
       setHasChanges(false);
     } catch (error: any) {
-      Alert.alert('خطأ', error.message || 'حدث خطأ أثناء الحفظ');
+      showToast({ message: error.message || 'حدث خطأ أثناء الحفظ', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -116,13 +182,27 @@ const ProfileScreen: React.FC = () => {
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {/* Avatar Section */}
             <View style={styles.avatarSection}>
-              <View style={styles.avatarContainer}>
-                <LinearGradient colors={['#ea384c', '#9c3d1a']} style={styles.avatarGradient}>
-                  <Text style={styles.avatarText}>
-                    {(fullName || user?.email || 'م').charAt(0).toUpperCase()}
-                  </Text>
-                </LinearGradient>
-              </View>
+              <TouchableOpacity onPress={handlePickImage} disabled={uploadingImage}>
+                <View style={styles.avatarContainer}>
+                  {avatarUrl ? (
+                    <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                  ) : (
+                    <LinearGradient colors={['#ea384c', '#9c3d1a']} style={styles.avatarGradient}>
+                      <Text style={styles.avatarText}>
+                        {(fullName || user?.email || 'م').charAt(0).toUpperCase()}
+                      </Text>
+                    </LinearGradient>
+                  )}
+                  {uploadingImage && (
+                    <View style={[styles.avatarGradient, styles.loadingOverlay]}>
+                      <ActivityIndicator color="#fff" />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.editIconContainer}>
+                  <Icon name="camera" size={20} color="#fff" />
+                </View>
+              </TouchableOpacity>
             </View>
 
             {/* Form Section */}
@@ -249,6 +329,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: { fontSize: 40, fontWeight: 'bold', color: '#fff' },
+  avatarImage: { width: '100%', height: '100%' },
+  editIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#ea384c',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#14090e',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
   formSection: { marginTop: 20 },
   inputGroup: { marginBottom: 20 },
   label: {

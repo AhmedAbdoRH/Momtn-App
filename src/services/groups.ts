@@ -14,6 +14,7 @@ export interface Group {
   welcome_message?: string | null;
   member_count?: number;
   user_role?: string;
+  latest_photo_url?: string | null;
 }
 
 export interface GroupMember {
@@ -142,7 +143,7 @@ export class GroupsService {
         throw new Error(`خطأ في جلب المجموعات: ${error.message}`);
       }
 
-      return data
+      const groups = data
         .map(item => {
           const groupRow = Array.isArray(item.groups) ? item.groups[0] : item.groups;
           if (!groupRow) {
@@ -155,6 +156,39 @@ export class GroupsService {
           } as Group;
         })
         .filter((g): g is Group => Boolean(g));
+
+      if (!groups.length) {
+        return groups;
+      }
+
+      const groupIds = groups.map(g => g.id);
+
+      const { data: photosData, error: photosError } = await supabase
+        .from('photos')
+        .select('group_id, image_url, created_at')
+        .in('group_id', groupIds)
+        .order('created_at', { ascending: false });
+
+      if (photosError) {
+        console.warn('Error fetching latest photos for groups:', photosError.message);
+        return groups;
+      }
+
+      const latestPhotoByGroup = new Map<string, string | null>();
+
+      photosData?.forEach(photo => {
+        if (!photo.group_id) {
+          return;
+        }
+        if (!latestPhotoByGroup.has(photo.group_id)) {
+          latestPhotoByGroup.set(photo.group_id, photo.image_url || null);
+        }
+      });
+
+      return groups.map(group => ({
+        ...group,
+        latest_photo_url: latestPhotoByGroup.get(group.id) ?? null,
+      }));
     } catch (error) {
       console.error('Error fetching user groups:', error);
       throw error;
@@ -328,7 +362,7 @@ export class GroupsService {
       }
 
       // التحقق من أن المستخدم عضو في المجموعة أو أن المجموعة عامة
-      const { data: membership, error: membershipError } = await supabase
+      const { error: membershipError } = await supabase
         .from('group_members')
         .select('id')
         .eq('group_id', groupId)
@@ -383,7 +417,7 @@ export class GroupsService {
       }
 
       // التحقق من أن المستخدم عضو في المجموعة
-      const { data: membership, error: membershipError } = await supabase
+      const { error: membershipError } = await supabase
         .from('group_members')
         .select('id')
         .eq('group_id', groupId)
@@ -399,10 +433,11 @@ export class GroupsService {
 
       // إنشاء الصورة مع البيانات المطلوبة
       const resolvedCaption = (photoData.caption || photoData.content || '').trim();
+      
       const photoPayload = {
         caption: resolvedCaption,
         hashtags: photoData.hashtags || [],
-        image_url: photoData.image_url || null,
+        image_url: photoData.image_url || '', // استخدام سلسلة فارغة بدلاً من null لتجنب قيود قاعدة البيانات
         group_id: groupId,
         user_id: user.id
       };
@@ -473,10 +508,11 @@ export class GroupsService {
 
       // إنشاء الصورة مع البيانات المطلوبة
       const resolvedCaption = (photoData.caption || photoData.content || '').trim();
+      
       const photoPayload = {
         caption: resolvedCaption,
         hashtags: photoData.hashtags || [],
-        image_url: photoData.image_url || null,
+        image_url: photoData.image_url || '', // استخدام سلسلة فارغة بدلاً من null لتجنب قيود قاعدة البيانات
         group_id: null,
         user_id: user.id
       };
