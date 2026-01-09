@@ -105,12 +105,22 @@ serve(async (req) => {
         const fcmBody = {
           message: {
             token: t.token,
+            notification: {
+              title: String(title),
+              body: String(body),
+            },
             data: {
               ...baseData,
               ...extraData,
             },
             android: {
-              priority: 'HIGH',
+              priority: 'high',
+              notification: {
+                channelId: 'momtn-notifications',
+                priority: 'high',
+                defaultSound: true,
+                defaultVibrateTimings: true,
+              }
             },
           }
         };
@@ -127,7 +137,13 @@ serve(async (req) => {
         const resText = await fcmRes.text();
         console.log(`--- FCM V1 STATUS FOR TOKEN ${t.token.substring(0, 10)}...: ${fcmRes.status} ---`);
         
-        if (fcmRes.status !== 200) {
+        if (fcmRes.status === 404 || fcmRes.status === 410) {
+          console.log(`--- REMOVING INVALID TOKEN: ${t.token.substring(0, 10)}... ---`);
+          await supabase
+            .from('device_tokens')
+            .delete()
+            .eq('token', t.token);
+        } else if (fcmRes.status !== 200) {
           console.error(`--- FCM V1 ERROR: ${resText} ---`);
         }
 

@@ -144,9 +144,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Handle foreground messages
+  // Handle foreground messages and token refresh
   const setupForegroundMessageHandler = useCallback(() => {
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
+    // 1. Listen for new messages
+    const unsubscribeMessage = messaging().onMessage(async remoteMessage => {
       console.log('Foreground message received:', remoteMessage);
 
       const data = remoteMessage.data || {};
@@ -195,7 +196,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       );
     });
 
-    return unsubscribe;
+    // 2. Listen for token refreshes
+    const unsubscribeToken = messaging().onTokenRefresh(async newToken => {
+      console.log('FCM Token refreshed:', newToken);
+      const currentUserId = userRef.current?.id;
+      if (currentUserId) {
+        const platform = Platform.OS;
+        const { error } = await supabase.from('device_tokens').upsert(
+          {
+            user_id: currentUserId,
+            token: newToken,
+            platform,
+          },
+          {
+            onConflict: 'user_id, token',
+          },
+        );
+        if (error) console.error('Error updating refreshed token:', error);
+      }
+    });
+
+    return () => {
+      unsubscribeMessage();
+      unsubscribeToken();
+    };
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -266,33 +290,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     });
 
-    // Setup foreground message handler
+    // Setup foreground message and token refresh handlers
     const unsubscribeMessaging = setupForegroundMessageHandler();
-
-    // Listen for token refresh
-    const unsubscribeTokenRefresh = messaging().onTokenRefresh(
-      async newToken => {
-        console.log('FCM Token refreshed:', newToken);
-        const currentUser = userRef.current;
-        if (currentUser?.id) {
-          await supabase.from('device_tokens').upsert(
-            {
-              user_id: currentUser.id,
-              token: newToken,
-              platform: Platform.OS,
-            },
-            {
-              onConflict: 'user_id, token',
-            },
-          );
-        }
-      },
-    );
 
     return () => {
       subscription.unsubscribe();
       unsubscribeMessaging();
-      unsubscribeTokenRefresh();
     };
   }, [
     initializeAuth,
