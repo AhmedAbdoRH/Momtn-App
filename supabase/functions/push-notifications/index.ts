@@ -59,13 +59,16 @@ serve(async (req) => {
     const FCM_V1_URL = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
 
     const payload = await req.json();
-    const { record } = payload;
+    // الـ Webhook يرسل البيانات في record، والـ Trigger يرسلها مباشرة أو في record
+    const record = payload.record || payload;
     
-    if (!record || !record.user_id) {
+    if (!record || (!record.user_id && !record.receiver_id)) {
+        console.error("--- ERROR: NO USER_ID IN PAYLOAD ---", JSON.stringify(payload));
         return new Response("No user_id", { status: 400 });
     }
 
-    console.log(`--- PROCESSING NOTIFICATION (V1) FOR USER: ${record.user_id} ---`);
+    const userId = record.user_id || record.receiver_id;
+    console.log(`--- PROCESSING NOTIFICATION (V1) FOR USER: ${userId} ---`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -75,7 +78,7 @@ serve(async (req) => {
     const { data: tokens, error: tokenError } = await supabase
       .from('device_tokens')
       .select('token')
-      .eq('user_id', record.user_id);
+      .eq('user_id', userId);
 
     if (tokenError || !tokens || tokens.length === 0) {
       return new Response(JSON.stringify({ success: true, message: "No tokens found" }), { status: 200 });
