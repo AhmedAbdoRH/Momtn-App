@@ -98,6 +98,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Register device token for push notifications
   const registerDeviceToken = useCallback(async (userId: string) => {
     try {
+      console.log('Registering device token for user:', userId);
       const authStatus = await messaging().requestPermission();
       const enabled =
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -105,20 +106,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (enabled) {
         const token = await messaging().getToken();
-        console.log('FCM Token:', token);
+        console.log('Current FCM Token:', token);
 
         // Subscribe to general topic for testing
         await messaging().subscribeToTopic('all_users');
-        console.log('Subscribed to all_users topic');
-
+        
         const platform = Platform.OS;
 
-        await supabase
+        // Clean up old tokens for this user on this platform that are different from current
+        const { error: deleteError } = await supabase
           .from('device_tokens')
           .delete()
           .eq('user_id', userId)
           .eq('platform', platform)
           .neq('token', token);
+        
+        if (deleteError) console.error('Error cleaning old tokens:', deleteError);
 
         const { error } = await supabase.from('device_tokens').upsert(
           {
@@ -132,15 +135,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         );
 
         if (error) {
-          console.error('Error saving device token:', error);
+          console.error('Error saving device token to DB:', error);
         } else {
-          console.log('Device token registered successfully');
+          console.log('Device token registered in DB successfully for user:', userId);
         }
       } else {
-        console.log('Notification permission not granted');
+        console.warn('Notification permission NOT granted');
       }
     } catch (error) {
-      console.error('Error registering device token:', error);
+      console.error('Exception in registerDeviceToken:', error);
     }
   }, []);
 

@@ -36,7 +36,9 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  
+  const shouldScrollToEnd = useRef(true);
+  const isFirstLoad = useRef(true);
+
   const {
     messages,
     loading,
@@ -47,18 +49,42 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     hasMore,
   } = useGroupChat(groupId, currentUserId);
 
-  // التمرير للأسفل عند وصول رسائل جديدة
+  // إعادة تعيين الحالة عند فتح/إغلاق الشات
   useEffect(() => {
-    if (messages.length > 0 && flatListRef.current) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+    if (visible) {
+      shouldScrollToEnd.current = true;
+      isFirstLoad.current = true;
     }
-  }, [messages.length]);
+  }, [visible]);
+
+  // التمرير للأسفل عند تغيير حجم المحتوى
+  const handleContentSizeChange = () => {
+    if (shouldScrollToEnd.current && messages.length > 0) {
+      flatListRef.current?.scrollToEnd({ animated: !isFirstLoad.current });
+      isFirstLoad.current = false;
+    }
+  };
+
+  // عند بداية السحب يدوياً، نوقف التمرير التلقائي مؤقتاً
+  const handleScrollBeginDrag = () => {
+    shouldScrollToEnd.current = false;
+  };
+
+  // عند وصول رسالة جديدة، نعيد تفعيل التمرير التلقائي
+  useEffect(() => {
+    if (messages.length > 0) {
+      // لو الرسالة الأخيرة من المستخدم الحالي، نمرر للأسفل
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.user_id === currentUserId) {
+        shouldScrollToEnd.current = true;
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }
+    }
+  }, [messages.length, currentUserId]);
 
   const handleSend = async () => {
     if (sending) return;
-    
+
     const textToSend = inputText.trim();
     if (!textToSend) {
       // إرسال قلب إذا كان الحقل فارغاً
@@ -110,7 +136,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
   const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
     const isMe = item.user_id === currentUserId;
     const hasLiked = item.likes?.includes(currentUserId) || false;
-    const showDate = index === 0 || 
+    const showDate = index === 0 ||
       new Date(item.created_at).toDateString() !== new Date(messages[index - 1].created_at).toDateString();
 
     return (
@@ -120,7 +146,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
             <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
           </View>
         )}
-        
+
         <View style={[
           styles.messageRow,
           isMe ? styles.myMessageRow : styles.otherMessageRow
@@ -128,9 +154,9 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
           {!isMe && (
             <View style={styles.avatarContainer}>
               {item.user?.avatar_url ? (
-                <Image 
-                  source={{ uri: item.user.avatar_url }} 
-                  style={styles.avatarImage} 
+                <Image
+                  source={{ uri: item.user.avatar_url }}
+                  style={styles.avatarImage}
                 />
               ) : (
                 <View style={[styles.avatar, { backgroundColor: Colors.primary }]}>
@@ -141,7 +167,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
               )}
             </View>
           )}
-          
+
           <View style={[
             styles.messageBubbleWrapper,
             isMe ? styles.myMessageWrapper : styles.otherMessageWrapper
@@ -149,8 +175,8 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
             {!isMe && (
               <Text style={styles.senderName}>{getDisplayName(item)}</Text>
             )}
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               activeOpacity={0.9}
               onLongPress={() => toggleLike(item.id)}
               style={[
@@ -165,7 +191,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
               ]}>
                 {item.content}
               </Text>
-              
+
               <View style={styles.messageFooter}>
                 <Text style={[
                   styles.messageTime,
@@ -176,7 +202,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
               </View>
 
               {/* زر التفاعل بالقلب - دائماً على اليسار */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
                   styles.heartBadge,
                   (!hasLiked && (!item.likes || item.likes.length === 0)) && styles.heartBadgeInactive
@@ -184,10 +210,10 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                 onPress={() => toggleLike(item.id)}
                 activeOpacity={0.7}
               >
-                <Icon 
-                  name={hasLiked ? "heart" : "heart-outline"} 
-                  size={14} 
-                  color={hasLiked ? "#ea384c" : "rgba(255,255,255,0.2)"} 
+                <Icon
+                  name={hasLiked ? "heart" : "heart-outline"}
+                  size={14}
+                  color={hasLiked ? "#ea384c" : "rgba(255,255,255,0.2)"}
                 />
                 {(item.likes && item.likes.length > 0) && (
                   <Text style={styles.likeCount}>{item.likes.length}</Text>
@@ -226,7 +252,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
         style={styles.container}
       >
         <SafeAreaView style={styles.safeArea}>
-          <KeyboardAvoidingView 
+          <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.keyboardView}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
@@ -236,12 +262,12 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <Icon name="close" size={24} color={Colors.textPrimary} />
               </TouchableOpacity>
-              
+
               <View style={styles.headerCenter}>
                 <Text style={styles.headerTitle}>{groupName}</Text>
                 <Text style={styles.headerSubtitle}>محادثة المجموعة</Text>
               </View>
-              
+
               <View style={{ width: 40 }} />
             </View>
 
@@ -265,7 +291,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                 onEndReachedThreshold={0.3}
                 ListHeaderComponent={
                   hasMore && messages.length > 0 ? (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.loadMoreButton}
                       onPress={loadMoreMessages}
                     >
@@ -274,6 +300,11 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                   ) : null
                 }
                 showsVerticalScrollIndicator={false}
+                onContentSizeChange={handleContentSizeChange}
+                onScrollBeginDrag={handleScrollBeginDrag}
+                maintainVisibleContentPosition={{
+                  minIndexForVisible: 0,
+                }}
               />
             )}
 
@@ -294,15 +325,15 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                 {sending ? (
                   <ActivityIndicator size="small" color={Colors.textPrimary} />
                 ) : (
-                  <Icon 
-                    name={inputText.trim() ? "send" : "heart"} 
-                    size={inputText.trim() ? 20 : 24} 
-                    color={Colors.textPrimary} 
+                  <Icon
+                    name={inputText.trim() ? "send" : "heart"}
+                    size={inputText.trim() ? 20 : 24}
+                    color={Colors.textPrimary}
                     style={!inputText.trim() && { transform: [{ scale: 1.1 }] }}
                   />
                 )}
               </TouchableOpacity>
-              
+
               <TextInput
                 style={styles.textInput}
                 value={inputText}
@@ -332,7 +363,7 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  
+
   // Header
   header: {
     flexDirection: 'row',
@@ -421,7 +452,7 @@ const styles = StyleSheet.create({
   otherMessageRow: {
     flexDirection: 'row',
   },
-  
+
   avatarContainer: {
     marginRight: Spacing.sm,
     justifyContent: 'flex-end',
@@ -460,7 +491,7 @@ const styles = StyleSheet.create({
   otherMessageWrapper: {
     alignItems: 'flex-start',
   },
-  
+
   senderName: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.6)',
