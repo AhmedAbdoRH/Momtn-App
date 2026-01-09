@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { Swipeable } from 'react-native-gesture-handler';
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../../../theme';
 import { useGroupChat, ChatMessage } from '../../hooks/useGroupChat';
 
@@ -35,9 +36,11 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const shouldScrollToEnd = useRef(true);
   const isFirstLoad = useRef(true);
+  const inputRef = useRef<TextInput>(null);
 
   const {
     messages,
@@ -54,6 +57,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     if (visible) {
       shouldScrollToEnd.current = true;
       isFirstLoad.current = true;
+      setReplyingTo(null);
     }
   }, [visible]);
 
@@ -82,6 +86,25 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     }
   }, [messages.length, currentUserId]);
 
+  // اختيار رسالة للرد عليها
+  const handleReply = (message: ChatMessage) => {
+    setReplyingTo(message);
+    inputRef.current?.focus();
+  };
+
+  // إلغاء الرد
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  // الحصول على اسم المرسل للرسالة المردود عليها
+  const getReplyDisplayName = (message: ChatMessage) => {
+    if (message.user_id === currentUserId) return 'أنت';
+    if (message.user?.full_name) return message.user.full_name;
+    if (message.user?.email) return message.user.email.split('@')[0];
+    return 'مستخدم';
+  };
+
   const handleSend = async () => {
     if (sending) return;
 
@@ -89,15 +112,17 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     if (!textToSend) {
       // إرسال قلب إذا كان الحقل فارغاً
       setSending(true);
-      await sendMessage('❤️');
+      await sendMessage('❤️', replyingTo?.id);
+      setReplyingTo(null);
       setSending(false);
       return;
     }
 
     setSending(true);
-    const success = await sendMessage(textToSend);
+    const success = await sendMessage(textToSend, replyingTo?.id);
     if (success) {
       setInputText('');
+      setReplyingTo(null);
     }
     setSending(false);
   };
@@ -176,50 +201,100 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
               <Text style={styles.senderName}>{getDisplayName(item)}</Text>
             )}
 
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onLongPress={() => toggleLike(item.id)}
-              style={[
-                styles.messageBubble,
-                isMe ? styles.myBubble : styles.otherBubble
-              ]}
+            <Swipeable
+              ref={(ref) => {
+                if (ref && !item.swipeableRef) {
+                  (item as any).swipeableRef = ref;
+                }
+              }}
+              friction={2}
+              rightThreshold={40}
+              leftThreshold={40}
+              renderLeftActions={!isMe ? (progress, dragX) => {
+                return (
+                  <View style={styles.swipeActionContainer}>
+                    <Icon name="arrow-undo" size={20} color={Colors.primary} />
+                  </View>
+                );
+              } : undefined}
+              renderRightActions={isMe ? (progress, dragX) => {
+                return (
+                  <View style={styles.swipeActionContainer}>
+                    <Icon name="arrow-undo" size={20} color={Colors.primary} />
+                  </View>
+                );
+              } : undefined}
+              onSwipeableWillOpen={() => {
+                handleReply(item);
+                // إغلاق السحب فوراً بعد تفعيل الرد
+                setTimeout(() => {
+                  (item as any).swipeableRef?.close();
+                }, 100);
+              }}
             >
-              <Text style={[
-                styles.messageText,
-                isMe ? styles.myMessageText : styles.otherMessageText,
-                item.content === '❤️' && { fontSize: 45, lineHeight: 55, textAlign: 'center' }
-              ]}>
-                {item.content}
-              </Text>
-
-              <View style={styles.messageFooter}>
-                <Text style={[
-                  styles.messageTime,
-                  isMe ? styles.myMessageTime : styles.otherMessageTime
-                ]}>
-                  {formatTime(item.created_at)}
-                </Text>
-              </View>
-
-              {/* زر التفاعل بالقلب - دائماً على اليسار */}
               <TouchableOpacity
+                activeOpacity={0.9}
+                onLongPress={() => toggleLike(item.id)}
                 style={[
-                  styles.heartBadge,
-                  (!hasLiked && (!item.likes || item.likes.length === 0)) && styles.heartBadgeInactive
+                  styles.messageBubble,
+                  isMe ? styles.myBubble : styles.otherBubble
                 ]}
-                onPress={() => toggleLike(item.id)}
-                activeOpacity={0.7}
               >
-                <Icon
-                  name={hasLiked ? "heart" : "heart-outline"}
-                  size={14}
-                  color={hasLiked ? "#ea384c" : "rgba(255,255,255,0.2)"}
-                />
-                {(item.likes && item.likes.length > 0) && (
-                  <Text style={styles.likeCount}>{item.likes.length}</Text>
+                {/* عرض الرسالة المردود عليها داخل الفقاعة */}
+                {item.replied_message && (
+                  <View style={[
+                    styles.repliedMessageContainer,
+                    isMe ? styles.myRepliedContainer : styles.otherRepliedContainer
+                  ]}>
+                    <View style={isMe ? styles.myRepliedIndicator : styles.otherRepliedIndicator} />
+                    <View style={styles.repliedContent}>
+                      <Text style={styles.repliedSender} numberOfLines={1}>
+                        {getReplyDisplayName(item.replied_message as any)}
+                      </Text>
+                      <Text style={styles.repliedText} numberOfLines={1}>
+                        {item.replied_message.content}
+                      </Text>
+                    </View>
+                  </View>
                 )}
+
+                <Text style={[
+                  styles.messageText,
+                  isMe ? styles.myMessageText : styles.otherMessageText,
+                  item.content === '❤️' && { fontSize: 45, lineHeight: 55, textAlign: 'center' }
+                ]}>
+                  {item.content}
+                </Text>
+
+                <View style={styles.messageFooter}>
+                  <Text style={[
+                    styles.messageTime,
+                    isMe ? styles.myMessageTime : styles.otherMessageTime
+                  ]}>
+                    {formatTime(item.created_at)}
+                  </Text>
+                </View>
+
+                {/* زر التفاعل بالقلب - دائماً على اليسار */}
+                <TouchableOpacity
+                  style={[
+                    styles.heartBadge,
+                    (!hasLiked && (!item.likes || item.likes.length === 0)) && styles.heartBadgeInactive
+                  ]}
+                  onPress={() => toggleLike(item.id)}
+                  activeOpacity={0.7}
+                >
+                  <Icon
+                    name={hasLiked ? "heart" : "heart-outline"}
+                    size={14}
+                    color={hasLiked ? "#ea384c" : "rgba(255,255,255,0.2)"}
+                  />
+                  {(item.likes && item.likes.length > 0) && (
+                    <Text style={styles.likeCount}>{item.likes.length}</Text>
+                  )}
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
+            </Swipeable>
           </View>
         </View>
       </View>
@@ -316,35 +391,55 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
             )}
 
             {/* Input Area */}
-            <View style={styles.inputContainer}>
-              <TouchableOpacity
-                style={[styles.sendButton, sending && styles.sendButtonDisabled]}
-                onPress={handleSend}
-                disabled={sending}
-              >
-                {sending ? (
-                  <ActivityIndicator size="small" color={Colors.textPrimary} />
-                ) : (
-                  <Icon
-                    name={inputText.trim() ? "send" : "heart"}
-                    size={inputText.trim() ? 20 : 24}
-                    color={Colors.textPrimary}
-                    style={!inputText.trim() && { transform: [{ scale: 1.1 }] }}
-                  />
-                )}
-              </TouchableOpacity>
+            <View style={styles.bottomSection}>
+              {/* شريط الرد المفعّل */}
+              {replyingTo && (
+                <View style={styles.replyBar}>
+                  <View style={styles.replyBarIndicator} />
+                  <View style={styles.replyBarContent}>
+                    <Text style={styles.replyBarSender}>
+                      الرد على {getReplyDisplayName(replyingTo)}
+                    </Text>
+                    <Text style={styles.replyBarText} numberOfLines={1}>
+                      {replyingTo.content}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={cancelReply} style={styles.cancelReplyButton}>
+                    <Icon name="close-circle" size={20} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              )}
 
-              <TextInput
-                style={styles.textInput}
-                value={inputText}
-                onChangeText={setInputText}
-                placeholder="اكتب رسالتك..."
-                placeholderTextColor={Colors.textMuted}
-                multiline
-                maxLength={1000}
-                textAlign="right"
-                onSubmitEditing={handleSend}
-              />
+              <View style={styles.inputContainer}>
+                <TouchableOpacity
+                  style={[styles.sendButton, sending && styles.sendButtonDisabled]}
+                  onPress={handleSend}
+                  disabled={sending}
+                >
+                  {sending ? (
+                    <ActivityIndicator size="small" color={Colors.textPrimary} />
+                  ) : (
+                    <Icon
+                      name={inputText.trim() ? "send" : "heart"}
+                      size={inputText.trim() ? 20 : 24}
+                      color={Colors.textPrimary}
+                      style={!inputText.trim() && { transform: [{ scale: 1.1 }] }}
+                    />
+                  )}
+                </TouchableOpacity>
+
+                <TextInput
+                  ref={inputRef}
+                  style={styles.textInput}
+                  value={inputText}
+                  onChangeText={setInputText}
+                  placeholder="اكتب رسالتك..."
+                  placeholderTextColor={Colors.textMuted}
+                  multiline
+                  maxLength={1000}
+                  textAlign="right"
+                />
+              </View>
             </View>
           </KeyboardAvoidingView>
         </SafeAreaView>
@@ -444,8 +539,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   myMessageRow: {
-    flexDirection: 'row', // Keep avatar on left of my bubble if needed, but usually my messages don't have avatar
-    justifyContent: 'flex-start', // Messages start from left for "Me" in RTL logic? Wait.
+    justifyContent: 'flex-start',
     // In Arabic: My messages are usually on the RIGHT.
     flexDirection: 'row-reverse',
   },
@@ -519,6 +613,91 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+
+  // Replied Message inside bubble
+  repliedMessageContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderRadius: 8,
+    marginBottom: 8,
+    overflow: 'hidden',
+    minWidth: 120,
+  },
+  myRepliedContainer: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  otherRepliedContainer: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  myRepliedIndicator: {
+    width: 4,
+    backgroundColor: '#fff',
+  },
+  otherRepliedIndicator: {
+    width: 4,
+    backgroundColor: Colors.primary,
+  },
+  repliedContent: {
+    padding: 6,
+    flex: 1,
+  },
+  repliedSender: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 2,
+    textAlign: 'right',
+  },
+  repliedText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'right',
+  },
+
+  swipeActionContainer: {
+    width: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Bottom Section & Reply Bar
+  bottomSection: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderLeftWidth: 0,
+  },
+  replyBarIndicator: {
+    width: 4,
+    height: '100%',
+    backgroundColor: Colors.primary,
+    borderRadius: 2,
+  },
+  replyBarContent: {
+    flex: 1,
+    paddingHorizontal: 15,
+  },
+  replyBarSender: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: Colors.primary,
+    textAlign: 'right',
+  },
+  replyBarText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: 'right',
+  },
+  cancelReplyButton: {
+    padding: 5,
   },
 
   messageText: {
@@ -605,13 +784,10 @@ const styles = StyleSheet.create({
 
   // Input Area
   inputContainer: {
-    flexDirection: 'row', // تغيير الاتجاه ليكون الزر على اليسار
+    flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
   },
   textInput: {
     flex: 1,
@@ -622,7 +798,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     maxHeight: 120,
-    marginLeft: Spacing.sm, // مسافة من الزر الذي على اليسار
+    marginLeft: Spacing.sm,
     textAlign: 'right',
   },
   sendButton: {

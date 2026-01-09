@@ -14,13 +14,23 @@ export interface ChatMessage {
     avatar_url?: string | null;
   };
   likes?: string[];
+  reply_to_message_id?: string | null;
+  replied_message?: {
+    id: string;
+    content: string;
+    user_id: string;
+    user?: {
+      full_name: string | null;
+      email: string;
+    };
+  } | null;
 }
 
 interface UseGroupChatReturn {
   messages: ChatMessage[];
   loading: boolean;
   error: string | null;
-  sendMessage: (content: string) => Promise<boolean>;
+  sendMessage: (content: string, replyToMessageId?: string | null) => Promise<boolean>;
   toggleLike: (messageId: string) => Promise<void>;
   loadMoreMessages: () => Promise<void>;
   hasMore: boolean;
@@ -60,12 +70,42 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
           .select('id, email, full_name, avatar_url')
           .in('id', userIds as string[]);
 
-        const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
+        const usersMap = new Map((usersData as any)?.map((u: any) => [u.id, u]) || []);
+
+        // جلب الرسائل المردود عليها
+        const replyIds = messagesData
+          .filter((m: any) => m.reply_to_message_id)
+          .map((m: any) => m.reply_to_message_id);
+
+        let repliedMessagesMap = new Map();
+        if (replyIds.length > 0) {
+          const { data: repliedMessages } = await (supabase as any)
+            .from('group_messages')
+            .select('id, content, user_id')
+            .in('id', replyIds);
+
+          if (repliedMessages) {
+            // جلب معلومات مرسلي الرسائل المردود عليها
+            const repliedUserIds = [...new Set(repliedMessages.map((m: any) => m.user_id))];
+            const { data: repliedUsersData } = await supabase
+              .from('users')
+              .select('id, email, full_name')
+              .in('id', repliedUserIds as string[]);
+
+            const repliedUsersMap = new Map((repliedUsersData as any)?.map((u: any) => [u.id, u]) || []);
+
+            repliedMessagesMap = new Map(repliedMessages.map((m: any) => [
+              m.id,
+              { ...m, user: repliedUsersMap.get(m.user_id) }
+            ]));
+          }
+        }
 
         const messagesWithUsers: ChatMessage[] = messagesData.map((msg: any) => ({
           ...msg,
           user: usersMap.get(msg.user_id) || { email: '', full_name: null, avatar_url: null },
-          likes: msg.likes || []
+          likes: msg.likes || [],
+          replied_message: msg.reply_to_message_id ? repliedMessagesMap.get(msg.reply_to_message_id) || null : null
         }));
 
         setMessages(messagesWithUsers);
@@ -87,7 +127,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
     if (!groupId || !hasMore || loading || messages.length === 0) return;
 
     const oldestMessage = messages[0];
-    
+
     try {
       const { data: moreMessages, error: moreError } = await (supabase as any)
         .from('group_messages')
@@ -125,17 +165,24 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
   }, [groupId, hasMore, loading, messages]);
 
   // إرسال رسالة جديدة
-  const sendMessage = useCallback(async (content: string): Promise<boolean> => {
+  const sendMessage = useCallback(async (content: string, replyToMessageId?: string | null): Promise<boolean> => {
     if (!groupId || !userId || !content.trim()) return false;
 
     try {
+      const insertData: any = {
+        group_id: groupId,
+        user_id: userId,
+        content: content.trim()
+      };
+
+      // إضافة معرف الرسالة المردود عليها إن وجد
+      if (replyToMessageId) {
+        insertData.reply_to_message_id = replyToMessageId;
+      }
+
       const { data: messageData, error: sendError } = await (supabase as any)
         .from('group_messages')
-        .insert({
-          group_id: groupId,
-          user_id: userId,
-          content: content.trim()
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -148,7 +195,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         .eq('id', userId)
         .single();
 
-      const senderName = userData?.full_name || userData?.email?.split('@')[0] || 'مستخدم';
+      const senderName = (userData as any)?.full_name || (userData as any)?.email?.split('@')[0] || 'مستخدم';
 
       const { data: groupData } = await supabase
         .from('groups')
@@ -156,7 +203,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         .eq('id', groupId)
         .single();
 
-      const groupName = groupData?.name || 'المجموعة';
+      const groupName = (groupData as any)?.name || 'المجموعة';
 
       await NotificationsService.notifyGroupMembers(
         groupId,
@@ -219,8 +266,8 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
           filter: `group_id=eq.${groupId}`
         },
         async (payload) => {
-          const newMessage = payload.new as ChatMessage;
-          
+          const newMessage = payload.new as any;
+
           // جلب معلومات المرسل
           const { data: userData } = await supabase
             .from('users')
@@ -228,10 +275,34 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
             .eq('id', newMessage.user_id)
             .single();
 
+          // جلب بيانات الرسالة المردود عليها إذا وجدت
+          let repliedMessageData = null;
+          if (newMessage.reply_to_message_id) {
+            const { data: repliedMsg } = await (supabase as any)
+              .from('group_messages')
+              .select('id, content, user_id')
+              .eq('id', newMessage.reply_to_message_id)
+              .single();
+
+            if (repliedMsg) {
+              const { data: repliedUser } = await supabase
+                .from('users')
+                .select('id, email, full_name')
+                .eq('id', repliedMsg.user_id)
+                .single();
+
+              repliedMessageData = {
+                ...repliedMsg,
+                user: repliedUser
+              };
+            }
+          }
+
           const messageWithUser: ChatMessage = {
             ...newMessage,
             user: userData || { email: '', full_name: null, avatar_url: null },
-            likes: newMessage.likes || []
+            likes: newMessage.likes || [],
+            replied_message: repliedMessageData
           };
 
           setMessages(prev => [...prev, messageWithUser]);
@@ -247,9 +318,9 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         },
         (payload) => {
           const updatedMessage = payload.new as ChatMessage;
-          setMessages(prev => prev.map(m => 
-            m.id === updatedMessage.id 
-              ? { ...m, likes: updatedMessage.likes || [] } 
+          setMessages(prev => prev.map(m =>
+            m.id === updatedMessage.id
+              ? { ...m, likes: updatedMessage.likes || [] }
               : m
           ));
         }
