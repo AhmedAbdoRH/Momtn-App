@@ -48,121 +48,89 @@ async function getAccessToken(serviceAccount: any) {
 
 serve(async (req) => {
   try {
-    const SERVICE_ACCOUNT_JSON = Deno.env.get('FCM_SERVICE_ACCOUNT');
-    if (!SERVICE_ACCOUNT_JSON) {
-      console.error("--- ERROR: FCM_SERVICE_ACCOUNT MISSING ---");
-      return new Response("FCM_SERVICE_ACCOUNT is missing", { status: 500 });
-    }
-
-    const serviceAccount = JSON.parse(SERVICE_ACCOUNT_JSON);
-    const accessToken = await getAccessToken(serviceAccount);
-    const FCM_V1_URL = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
-
     const payload = await req.json();
-    // الـ Webhook يرسل البيانات في record، والـ Trigger يرسلها مباشرة أو في record
     const record = payload.record || payload;
     
     if (!record || (!record.user_id && !record.receiver_id)) {
-        console.error("--- ERROR: NO USER_ID IN PAYLOAD ---", JSON.stringify(payload));
-        return new Response("No user_id", { status: 400 });
+      return new Response("No user_id", { status: 400 });
     }
 
     const userId = record.user_id || record.receiver_id;
-    console.log(`--- PROCESSING NOTIFICATION (V1) FOR USER: ${userId} ---`);
-
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: tokens, error: tokenError } = await supabase
+    const { data: tokens } = await supabase
       .from('device_tokens')
       .select('token')
       .eq('user_id', userId);
 
-    if (tokenError || !tokens || tokens.length === 0) {
+    if (!tokens || tokens.length === 0) {
       return new Response(JSON.stringify({ success: true, message: "No tokens found" }), { status: 200 });
     }
 
-    const results = [];
-    for (const t of tokens) {
+    // تجهيز بيانات الإشعار
+    const title = record.title || 'إشعار جديد';
+    const body = record.body || '';
+    const type = String(record.type || 'new_photo');
+    const groupId = String(record.group_id || '');
+
+    // محاولة الإرسال عبر FCM v1 (الأحدث)
+    const SERVICE_ACCOUNT_JSON = Deno.env.get('FCM_SERVICE_ACCOUNT');
+    let v1Success = false;
+
+    if (SERVICE_ACCOUNT_JSON) {
       try {
-        const title = record.title || 'إشعار جديد';
-        const body = record.body || '';
-        const type = String(record.type || 'new_photo');
-        const groupId = String(record.group_id || '');
+        const serviceAccount = JSON.parse(SERVICE_ACCOUNT_JSON);
+        const accessToken = await getAccessToken(serviceAccount);
+        const FCM_V1_URL = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
 
-        const baseData: Record<string, string> = {
-          title: String(title),
-          body: String(body),
-          type,
-          group_id: groupId,
-          notification_id: String(record.id || ''),
-        };
+        for (const t of tokens) {
+          const fcmBody = {
+            message: {
+              token: t.token,
+              notification: { title, body },
+              data: { title, body, type, group_id: groupId, notification_id: String(record.id || '') },
+              android: { priority: 'high', notification: { channelId: 'momtn-notifications' } }
+            }
+          };
 
-        const extraData = Object.keys(record.data || {}).reduce((acc, key) => {
-          acc[key] = String(record.data[key]);
-          return acc;
-        }, {} as Record<string, string>);
-
-        const fcmBody = {
-          message: {
-            token: t.token,
-            notification: {
-              title: String(title),
-              body: String(body),
-            },
-            data: {
-              ...baseData,
-              ...extraData,
-            },
-            android: {
-              priority: 'high',
-              notification: {
-                channelId: 'momtn-notifications',
-                priority: 'high',
-                defaultSound: true,
-                defaultVibrateTimings: true,
-              }
-            },
-          }
-        };
-
-        const fcmRes = await fetch(FCM_V1_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(fcmBody),
-        });
-        
-        const resText = await fcmRes.text();
-        console.log(`--- FCM V1 STATUS FOR TOKEN ${t.token.substring(0, 10)}...: ${fcmRes.status} ---`);
-        
-        if (fcmRes.status === 404 || fcmRes.status === 410) {
-          console.log(`--- REMOVING INVALID TOKEN: ${t.token.substring(0, 10)}... ---`);
-          await supabase
-            .from('device_tokens')
-            .delete()
-            .eq('token', t.token);
-        } else if (fcmRes.status !== 200) {
-          console.error(`--- FCM V1 ERROR: ${resText} ---`);
+          const res = await fetch(FCM_V1_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+            body: JSON.stringify(fcmBody)
+          });
+          if (res.status === 200) v1Success = true;
         }
-
-        results.push({ token: t.token.substring(0, 10), status: fcmRes.status });
-      } catch (tokenErr) {
-        console.error(`--- ERROR SENDING (V1): ${tokenErr.message} ---`);
+      } catch (e) {
+        console.error("FCM v1 failed, trying Legacy...", e.message);
       }
     }
 
-    return new Response(JSON.stringify({ success: true, results }), { 
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
+    // إذا فشل v1، نجرب الطريقة القديمة (Legacy) باستخدام Server Key
+    if (!v1Success) {
+      const SERVER_KEY = Deno.env.get('FCM_SERVER_KEY');
+      if (SERVER_KEY) {
+        for (const t of tokens) {
+          const legacyBody = {
+            to: t.token,
+            notification: { title, body, sound: "default", badge: "1" },
+            data: { title, body, type, group_id: groupId },
+            priority: "high"
+          };
 
+          await fetch("https://fcm.googleapis.com/fcm/send", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `key=${SERVER_KEY}` },
+            body: JSON.stringify(legacyBody)
+          });
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (err) {
-    console.error(`--- CRITICAL ERROR (V1): ${err.message} ---`);
     return new Response(err.message, { status: 500 });
   }
 });
