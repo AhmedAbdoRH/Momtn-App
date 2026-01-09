@@ -78,6 +78,7 @@ serve(async (req) => {
 
     // محاولة الإرسال عبر FCM v1 (الأحدث)
     const SERVICE_ACCOUNT_JSON = Deno.env.get('FCM_SERVICE_ACCOUNT');
+    const SERVER_KEY = Deno.env.get('FCM_SERVER_KEY');
     let v1Success = false;
 
     if (SERVICE_ACCOUNT_JSON) {
@@ -101,32 +102,51 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
             body: JSON.stringify(fcmBody)
           });
-          if (res.status === 200) v1Success = true;
+          
+          if (res.status === 200) {
+            v1Success = true;
+            console.log(`Successfully sent FCM v1 notification to token: ${t.token.substring(0, 10)}...`);
+          } else {
+            const errorText = await res.text();
+            console.error(`FCM v1 error for token ${t.token.substring(0, 10)}...:`, errorText);
+          }
         }
       } catch (e) {
-        console.error("FCM v1 failed, trying Legacy...", e.message);
+        console.error("FCM v1 process failed:", e.message);
       }
     }
 
-    // إذا فشل v1، نجرب الطريقة القديمة (Legacy) باستخدام Server Key
-    if (!v1Success) {
-      const SERVER_KEY = Deno.env.get('FCM_SERVER_KEY');
-      if (SERVER_KEY) {
-        for (const t of tokens) {
+    // إذا لم يتوفر v1 أو فشل، نجرب الطريقة القديمة (Legacy) باستخدام Server Key
+    if (!v1Success && SERVER_KEY) {
+      console.log("Attempting Legacy FCM delivery...");
+      for (const t of tokens) {
+        try {
           const legacyBody = {
             to: t.token,
             notification: { title, body, sound: "default", badge: "1" },
-            data: { title, body, type, group_id: groupId },
+            data: { title, body, type, group_id: groupId, notification_id: String(record.id || '') },
             priority: "high"
           };
 
-          await fetch("https://fcm.googleapis.com/fcm/send", {
+          const res = await fetch("https://fcm.googleapis.com/fcm/send", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `key=${SERVER_KEY}` },
             body: JSON.stringify(legacyBody)
           });
+
+          if (res.status === 200) {
+            console.log(`Successfully sent Legacy FCM notification to token: ${t.token.substring(0, 10)}...`);
+          } else {
+            const errorText = await res.text();
+            console.error(`Legacy FCM error for token ${t.token.substring(0, 10)}...:`, errorText);
+          }
+        } catch (e) {
+          console.error(`Legacy FCM fetch failed for token ${t.token.substring(0, 10)}...:`, e.message);
         }
       }
+    } else if (!v1Success && !SERVER_KEY && !SERVICE_ACCOUNT_JSON) {
+      console.error("No FCM credentials found (neither FCM_SERVICE_ACCOUNT nor FCM_SERVER_KEY)");
+      return new Response(JSON.stringify({ error: "No FCM credentials" }), { status: 500 });
     }
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
