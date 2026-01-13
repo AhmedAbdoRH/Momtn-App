@@ -1,0 +1,391 @@
+--------- beginning of system
+01-13 12:27:12.334   685  1501 W ActivityTaskManager: callingPackage for (uid=2000, pid=6388) has no WPC
+--------- beginning of main
+01-13 12:27:12.336   685  1501 V GrammaticalInflectionUtils: AttributionSource: android.content.AttributionSource@edeb4362 does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+01-13 12:27:12.336   685  1501 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_USER_ASPECT_RATIO_OVERRIDE
+01-13 12:27:12.336   685  1501 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_USER_ASPECT_RATIO_FULLSCREEN_OVERRIDE
+01-13 12:27:12.336   685  1501 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_RESIZEABLE_ACTIVITY_OVERRIDES
+01-13 12:27:12.336   685  1501 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_MIN_ASPECT_RATIO_OVERRIDE
+01-13 12:27:12.342   685  1501 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_ORIENTATION_OVERRIDE
+01-13 12:27:12.344   549  1129 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+01-13 12:27:12.348   685  1501 I ActivityTaskManager: START u0 {flg=0x10000000 xflg=0x5 cmp=com.myapp1reactnative/.MainActivity} with LAUNCH_SINGLE_TASK from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+01-13 12:27:12.349   926  1008 V WindowManagerShell: Transition requested (#35): android.os.BinderProxy@ce5bfed TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=18 effectiveUid=10222 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.myapp1reactnative/.MainActivity } baseActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} topActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} origActivity=null realActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} numActivities=1 lastActiveTime=7731479 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@c9b1e22} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 136 - 0, 0) topActivityInfo=ActivityInfo{18660b3 com.myapp1reactnative.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=false lastNonFullscreenBounds=Rect(276, 696 - 805, 1776) capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=-9 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false eligibleForLetterboxEducation= false isLetterboxEducationEnabled= true isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 1080, 2400) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null cameraCompatTaskInfo=CameraCompatTaskInfo { freeformCameraCompatMode=inactive}} topActivityMainWindowFrame=null}, pipChange = null, remoteTransition = null, displayChange = null, flags = 0, debugId = 35 }
+01-13 12:27:12.349   926  1008 D ShellSplitScreen: logExit: no-op, mLoggerSessionId is null
+01-13 12:27:12.349   926  1049 I ndroid.systemui: AssetManager2(0x73f56784e7d8) locale list changing from [] to [en-US]
+01-13 12:27:12.352   685   713 V GrammaticalInflectionUtils: AttributionSource: android.content.AttributionSource@edeb4362 does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+01-13 12:27:12.353  1055  1055 W SplitSelectStateCtor: Missing session instanceIds
+01-13 12:27:12.353  1055  1055 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+01-13 12:27:12.357   926  1051 W HWUI    : Image decoding logging dropped!
+01-13 12:27:12.360   549   549 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+01-13 12:27:12.363   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.365   595  3835 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.365   595  3835 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.367   476   476 I Zygote  : Entering forkRepeatedly native zygote loop
+01-13 12:27:12.367   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.373   685  1501 D CoreBackPreview: Window{1330fd4 u0 Splash Screen com.myapp1reactnative}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@a4208c3, mPriority=0, mIsAnimationCallback=false, mOverrideBehavior=0}
+01-13 12:27:12.374   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.374   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.374   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.375   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.375   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.375   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.375   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.375   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.376   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.377   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.378   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.379   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.379   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.379   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.380   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.380   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.380   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.381   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.381   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.383   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.384   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.384   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.384   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.384   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.384   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.384   476   476 D Zygote  : Forked child process 6391
+01-13 12:27:12.385   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.385   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.386   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.386   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.386   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.387   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.387   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.388   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.388   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.388   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.388   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.389   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.389   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.390   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.391   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.408   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.409   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.409   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.409   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.409   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.409   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.410   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.410   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.410   685   713 W IPCThreadState: Sending oneway calls to frozen process.
+01-13 12:27:12.432   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.432   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.432   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.433   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.434  6391  6391 I app1reactnative: Using CollectorTypeCMC GC.
+01-13 12:27:12.435  6391  6391 W app1reactnative: Unexpected CPU variant for x86: x86_64.
+01-13 12:27:12.435  6391  6391 W app1reactnative: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, alderlake, default
+01-13 12:27:12.439   685   720 W ActivityManager: Slow operation: 85ms so far, now at startProcess: done updating battery stats
+01-13 12:27:12.440   685   720 W ActivityManager: Slow operation: 85ms so far, now at startProcess: building log message
+01-13 12:27:12.440   685   720 I ActivityManager: Start proc 6391:com.myapp1reactnative/u0a222 for next-top-activity {com.myapp1reactnative/com.myapp1reactnative.MainActivity}
+01-13 12:27:12.440   685   720 W ActivityManager: Slow operation: 86ms so far, now at startProcess: starting to update pids map
+01-13 12:27:12.440   685   720 I ActivityManager: ProcessObserver broadcast disabled
+01-13 12:27:12.440   685   720 W ActivityManager: Slow operation: 86ms so far, now at startProcess: done updating pids map
+01-13 12:27:12.441  6391  6391 E app1reactnative: Not starting debugger since process cannot load the jdwp agent.
+01-13 12:27:12.447  6391  6391 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+01-13 12:27:12.463   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.534  6391  6391 D nativeloader: Configuring clns-9 for other apk /data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk. target_sdk_version=35, uses_libraries=, library_path=/data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/lib/x86_64:/data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/com.myapp1reactnative
+01-13 12:27:12.539  6391  6391 D CompatChangeReporter: Compat change id reported: 202956589; UID 10222; state: ENABLED
+01-13 12:27:12.544  6391  6391 I app1reactnative: AssetManager2(0x73f567814178) locale list changing from [] to [en-US]
+01-13 12:27:12.549   926  4660 V WindowManagerShell: onTransitionReady(transaction=2942052599069)
+01-13 12:27:12.549   685   710 V WindowManager: Sent Transition (#35) createdAt=01-13 12:27:12.337 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=18 effectiveUid=10222 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.myapp1reactnative/.MainActivity } baseActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} topActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} origActivity=null realActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} numActivities=1 lastActiveTime=7731479 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{8ce0217 Task{a0f7b4b #18 type=standard A=10222:com.myapp1reactnative}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 136 - 0, 0) topActivityInfo=ActivityInfo{9241604 com.myapp1reactnative.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=false lastNonFullscreenBounds=Rect(276, 696 - 805, 1776) capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=-9 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false eligibleForLetterboxEducation= false isLetterboxEducationEnabled= true isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 1080, 2400) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null cameraCompatTaskInfo=CameraCompatTaskInfo { freeformCameraCompatMode=inactive}} topActivityMainWindowFrame=null}, pipChange = null, remoteTransition = null, displayChange = null, flags = 0, debugId = 35 }
+01-13 12:27:12.549   685   710 V WindowManager:     startWCT=WindowContainerTransaction { changes= {} hops= [] errorCallbackToken=null taskFragmentOrganizer=null }
+01-13 12:27:12.549   685   710 V WindowManager:     info={id=35 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+01-13 12:27:12.549   685   710 V WindowManager:         {WCT{RemoteToken{8ce0217 Task{a0f7b4b #18 type=standard A=10222:com.myapp1reactnative}}} m=OPEN f=NONE leash=Surface(name=Task=18)/@0xde7e735 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+01-13 12:27:12.549   685   710 V WindowManager:         {WCT{RemoteToken{7319a40 Task{759ffbb #1 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0x795aa3c sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+01-13 12:27:12.549   685   710 V WindowManager:         {m=TO_BACK f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{ffbae50 showWhenLocked=false})/@0xb24e42f sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}
+01-13 12:27:12.549   685   710 V WindowManager:     ]}
+01-13 12:27:12.550   926  1008 V WindowManagerShell: onTransitionReady (#35) android.os.BinderProxy@ce5bfed: {id=35 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+01-13 12:27:12.550   926  1008 V WindowManagerShell:         {m=OPEN f=NONE leash=Surface(name=Task=18)/@0x99a3493 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+01-13 12:27:12.550   926  1008 V WindowManagerShell:         {m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xf5f5cd0 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+01-13 12:27:12.550   926  1008 V WindowManagerShell:         {m=TO_BACK f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{ffbae50 showWhenLocked=false})/@0x2c214c9 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}
+01-13 12:27:12.550   926  1008 V WindowManagerShell:     ]}
+01-13 12:27:12.551   926  1008 V WindowManagerShell: Playing animation for (#35) android.os.BinderProxy@ce5bfed@0
+01-13 12:27:12.551   926  1008 V ShellRecents: RecentsTransitionHandler.startAnimation: no controller found
+01-13 12:27:12.551   926  1008 V WindowManagerShell: Transition doesn't have explicit remote, search filters for match for {id=35 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=OPEN f=NONE leash=Surface(name=Task=18)/@0x99a3493 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xf5f5cd0 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=TO_BACK f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{ffbae50 showWhenLocked=false})/@0x2c214c9 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}]}
+01-13 12:27:12.551   926  1008 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null taskFragmentToken=android.os.BinderProxy@145a045 windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@bd8739a, appThread = android.app.IApplicationThread$Stub$Proxy@17e54cb, debugName = overlayBackTransition }}
+01-13 12:27:12.551   926  1008 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@a224a8, appThread = android.app.IApplicationThread$Stub$Proxy@e24fbc1, debugName = LauncherToDream }}
+01-13 12:27:12.551   926  1008 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=TOP topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@2ba2f66, appThread = android.app.IApplicationThread$Stub$Proxy@29b72a7, debugName = QuickstepLaunchHome }}
+01-13 12:27:12.551   926  1008 V WindowManagerShell:  Delegate animation for (#35) to null
+01-13 12:27:12.553   926  1008 V WindowManagerShell: start default transition animation, info = {id=35 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=OPEN f=NONE leash=Surface(name=Task=18)/@0x99a3493 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xf5f5cd0 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=TO_BACK f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{ffbae50 showWhenLocked=false})/@0x2c214c9 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}]}
+01-13 12:27:12.557  6391  6391 V GraphicsEnvironment: Currently set values for:
+01-13 12:27:12.557  6391  6391 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+01-13 12:27:12.557  6391  6391 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+01-13 12:27:12.557  6391  6391 V GraphicsEnvironment: com.myapp1reactnative is not listed in per-application setting
+01-13 12:27:12.557  6391  6391 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+01-13 12:27:12.557  6391  6391 V GraphicsEnvironment: com.myapp1reactnative is not listed in ANGLE allowlist or settings, returning default
+01-13 12:27:12.557  6391  6391 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+01-13 12:27:12.557   926  1008 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@84e3485 animAttr=0x13 type=OPEN isEntrance=false
+01-13 12:27:12.563   926  1008 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@5b782a6 animAttr=0x12 type=OPEN isEntrance=true
+01-13 12:27:12.565   926  1008 V WindowManagerShell:  animated by com.android.wm.shell.transition.DefaultTransitionHandler@a2a5df8
+01-13 12:27:12.571  6391  6391 W FirebaseApp: Default FirebaseApp failed to initialize because no default options were found. This usually means that com.google.gms:google-services was not applied to your gradle project.
+01-13 12:27:12.571  6391  6391 I FirebaseInitProvider: FirebaseApp initialization unsuccessful
+01-13 12:27:12.571  6391  6391 D ReactNativeFirebaseApp: received application context.
+01-13 12:27:12.585  6391  6391 D CompatChangeReporter: Compat change id reported: 279646685; UID 10222; state: ENABLED
+01-13 12:27:12.586  6391  6391 D WM-WrkMgrInitializer: Initializing WorkManager with default configuration.
+01-13 12:27:12.603  6391  6391 D NOTIFEE : (context): received application context
+01-13 12:27:12.607  6391  6405 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+01-13 12:27:12.612  6391  6391 W SoLoader: Initializing SoLoader: 0
+01-13 12:27:12.614  6391  6391 W SoLoader: Recording new base apk path: /data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk
+01-13 12:27:12.614  6391  6391 W SoLoader: Previously recorded 0 base apk paths.
+01-13 12:27:12.615  6391  6391 D CompatChangeReporter: Compat change id reported: 312399441; UID 10222; state: ENABLED
+01-13 12:27:12.616  6391  6391 I SoLoader: Preparing SO source: DirectorySoSource[root = /vendor/lib64 flags = 2]
+01-13 12:27:12.616  6391  6391 I SoLoader: Preparing SO source: DirectorySoSource[root = /system/lib64 flags = 2]
+01-13 12:27:12.616  6391  6391 I SoLoader: Preparing SO source: DirectApkSoSource[root = [/data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk!/lib/x86_64]]
+01-13 12:27:12.618  6391  6391 I SoLoader: Preparing SO source: ApplicationSoSource[DirectorySoSource[root = /data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/lib/x86_64 flags = 0]]
+01-13 12:27:12.618  6391  6391 I SoLoader: init finish: 4 SO sources prepared
+01-13 12:27:12.618  6391  6391 W SoLoader: SoLoader initialized: 8
+01-13 12:27:12.621   685  1219 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ENABLE_FAKE_FOCUS
+01-13 12:27:12.627  6391  6406 I DisplayManager: Choreographer implicitly registered for the refresh rate.
+01-13 12:27:12.629   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.630   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:12.633  6391  6391 I app1reactnative: AssetManager2(0x73f56780f678) locale list changing from [] to [en-US]
+01-13 12:27:12.649  6391  6391 D AppCompatDelegate: Checking for metadata for AppLocalesMetadataHolderService : Service not found
+01-13 12:27:12.650  6391  6391 I app1reactnative: AssetManager2(0x73f567815758) locale list changing from [] to [en-US]
+01-13 12:27:12.677  6391  6391 W HWUI    : Image decoding logging dropped!
+01-13 12:27:12.680  6391  6406 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+01-13 12:27:12.681  6391  6406 I EGL_emulation: Opening libGLESv2_emulation.so
+01-13 12:27:12.715  6391  6406 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+01-13 12:27:12.715  6391  6406 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+01-13 12:27:12.720  6391  6391 D nativeloader: Load /data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk!/lib/x86_64/libc++_shared.so using class loader ns clns-9 (caller=/data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk): ok
+01-13 12:27:12.731  6391  6391 D nativeloader: Load /data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk!/lib/x86_64/libjsi.so using class loader ns clns-9 (caller=/data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk): ok
+01-13 12:27:12.740  6391  6391 D nativeloader: Load /data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk!/lib/x86_64/libfbjni.so using class loader ns clns-9 (caller=/data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk): ok
+01-13 12:27:12.753  6391  6391 D nativeloader: Load /data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk!/lib/x86_64/libreactnative.so using class loader ns clns-9 (caller=/data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk): ok
+01-13 12:27:12.753  6391  6391 D jni_lib_merge: Entering merged library JNI_OnLoad.
+01-13 12:27:12.753  6391  6391 D jni_lib_merge: Preparing 12 pre-merged libs (including stub)
+01-13 12:27:12.753  6391  6391 D jni_lib_merge: Preparing to register libfabricjni_so.  onload_func: 0x73f4960b0ba0
+01-13 12:27:12.753  6391  6391 D jni_lib_merge: Preparing to register libreact_devsupportjni_so.  onload_func: 0x73f49618c530
+01-13 12:27:12.753  6391  6391 D jni_lib_merge: Preparing to register libreact_featureflagsjni_so.  onload_func: 0x73f49619f0a0
+01-13 12:27:12.754  6391  6391 D jni_lib_merge: Preparing to register libreact_newarchdefaults_so.  onload_func: 0x73f4961c5fa0
+01-13 12:27:12.754  6391  6391 D jni_lib_merge: Preparing to register libreactnativeblob_so.  onload_func: 0x73f49626da50
+01-13 12:27:12.754  6391  6391 D jni_lib_merge: Preparing to register libreactnativejni_so.  onload_func: 0x73f4962888c0
+01-13 12:27:12.754  6391  6391 D jni_lib_merge: Preparing to register libreactnativejni_common_so.  onload_func: 0x73f49628f150
+01-13 12:27:12.754  6391  6391 D jni_lib_merge: Preparing to register librninstance_so.  onload_func: 0x73f4962ad450
+01-13 12:27:12.754  6391  6391 D jni_lib_merge: Preparing to register libturbomodulejsijni_so.  onload_func: 0x73f496358b90
+01-13 12:27:12.754  6391  6391 D jni_lib_merge: Preparing to register libuimanagerjni_so.  onload_func: 0x73f496360ac0
+01-13 12:27:12.754  6391  6391 D jni_lib_merge: Preparing to register libyoga_so.  onload_func: 0x73f496368140
+01-13 12:27:12.754  6391  6391 D jni_lib_merge: About to register 11 actual methods.
+01-13 12:27:12.767  6391  6391 W SoLoader: SoLoader already initialized
+01-13 12:27:12.770  6391  6391 D nativeloader: Load /data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk!/lib/x86_64/libhermes.so using class loader ns clns-9 (caller=/data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk): ok
+01-13 12:27:12.772  6391  6391 D nativeloader: Load /data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk!/lib/x86_64/libhermestooling.so using class loader ns clns-9 (caller=/data/app/~~DqQ2mF-ZvIeHY_nqueAwxg==/com.myapp1reactnative-Jz21Hht2V39hAwCCwkQBzA==/base.apk): ok
+01-13 12:27:12.772  6391  6391 D jni_lib_merge: Entering merged library JNI_OnLoad.
+01-13 12:27:12.772  6391  6391 D jni_lib_merge: Preparing 4 pre-merged libs (including stub)
+01-13 12:27:12.772  6391  6391 D jni_lib_merge: Preparing to register libhermes_executor_so.  onload_func: 0x73f497521730
+01-13 12:27:12.772  6391  6391 D jni_lib_merge: Preparing to register libhermesinstancejni_so.  onload_func: 0x73f497528db0
+01-13 12:27:12.772  6391  6391 D jni_lib_merge: Preparing to register libjsijniprofiler_so.  onload_func: 0x73f497529540
+01-13 12:27:12.772  6391  6391 D jni_lib_merge: About to register 3 actual methods.
+01-13 12:27:12.773  6391  6391 W SoLoader: SoLoader already initialized
+01-13 12:27:12.781  6391  6391 D CompatChangeReporter: Compat change id reported: 309578419; UID 10222; state: ENABLED
+01-13 12:27:12.782  6391  6391 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
+01-13 12:27:12.795  6391  6391 D CompatChangeReporter: Compat change id reported: 352594277; UID 10222; state: ENABLED
+01-13 12:27:12.799  6391  6391 D CompatChangeReporter: Compat change id reported: 349153669; UID 10222; state: ENABLED
+01-13 12:27:12.801  6391  6391 W HWUI    : Unknown dataspace 0
+01-13 12:27:12.820   685  1219 D CoreBackPreview: Window{3b0834 u0 com.myapp1reactnative/com.myapp1reactnative.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@7e9bbd2, mPriority=0, mIsAnimationCallback=false, mOverrideBehavior=0}
+01-13 12:27:12.836  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.drawer.ReactDrawerLayoutManager
+01-13 12:27:12.840  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.uimanager.LayoutShadowNode
+01-13 12:27:12.841  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.scroll.ReactHorizontalScrollViewManager
+01-13 12:27:12.843  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.scroll.ReactHorizontalScrollContainerViewManager
+01-13 12:27:12.844  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.progressbar.ReactProgressBarViewManager
+01-13 12:27:12.845  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.progressbar.ProgressBarShadowNode
+01-13 12:27:12.846  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.scroll.ReactScrollViewManager
+01-13 12:27:12.846  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.switchview.ReactSwitchManager
+01-13 12:27:12.847  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.switchview.ReactSwitchShadowNode
+01-13 12:27:12.847  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.safeareaview.ReactSafeAreaViewManager
+01-13 12:27:12.847  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.safeareaview.ReactSafeAreaViewShadowNode
+01-13 12:27:12.847  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.swiperefresh.SwipeRefreshLayoutManager
+01-13 12:27:12.848  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.frescosupport.FrescoBasedReactTextInlineImageViewManager
+01-13 12:27:12.848  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.frescosupport.FrescoBasedReactTextInlineImageShadowNode
+01-13 12:27:12.849  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.image.ReactImageManager
+01-13 12:27:12.850  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.modal.ReactModalHostManager
+01-13 12:27:12.850  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.ReactRawTextManager
+01-13 12:27:12.851  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.ReactRawTextShadowNode
+01-13 12:27:12.851  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.textinput.ReactTextInputManager
+01-13 12:27:12.852  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.textinput.ReactTextInputShadowNode
+01-13 12:27:12.853  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.ReactTextViewManager
+01-13 12:27:12.853  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.ReactTextShadowNode
+01-13 12:27:12.853  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.view.ReactViewManager
+01-13 12:27:12.854  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.ReactVirtualTextViewManager
+01-13 12:27:12.854  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.text.ReactVirtualTextShadowNode
+01-13 12:27:12.854  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.facebook.react.views.unimplementedview.ReactUnimplementedViewManager
+01-13 12:27:12.855  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.reactnativegooglesignin.RNGoogleSigninButtonViewManager
+01-13 12:27:12.855  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.gesturehandler.react.RNGestureHandlerRootViewManager
+01-13 12:27:12.856  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.gesturehandler.react.RNGestureHandlerButtonViewManager
+01-13 12:27:12.857  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.BV.LinearGradient.LinearGradientManager
+01-13 12:27:12.857  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.th3rdwave.safeareacontext.SafeAreaProviderManager
+01-13 12:27:12.858  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.th3rdwave.safeareacontext.SafeAreaViewManager
+01-13 12:27:12.859  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.th3rdwave.safeareacontext.SafeAreaViewShadowNode
+01-13 12:27:12.859  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenContainerViewManager
+01-13 12:27:12.859   926  1008 V WindowManagerShell: Transition animation finished (aborted=false), notifying core (#35) android.os.BinderProxy@ce5bfed@0
+01-13 12:27:12.860  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenViewManager
+01-13 12:27:12.861   685   710 V WindowManager: Finish Transition (#35): created at 01-13 12:27:12.337 collect-started=0.107ms request-sent=10.512ms started=17.554ms ready=205.399ms sent=208.836ms commit=31.143ms finished=523.631ms
+01-13 12:27:12.861  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ModalScreenViewManager
+01-13 12:27:12.862  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenStackViewManager
+01-13 12:27:12.862  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenStackHeaderConfigViewManager
+01-13 12:27:12.863   926  1008 V WindowManagerShell: Track 0 became idle
+01-13 12:27:12.863   926  1008 V WindowManagerShell: All active transition animations finished
+01-13 12:27:12.863  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenStackHeaderSubviewManager
+01-13 12:27:12.863  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.SearchBarManager
+01-13 12:27:12.864  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenFooterManager
+01-13 12:27:12.864  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.ScreenContentWrapperManager
+01-13 12:27:12.864  1055  1055 D VRI[NexusLauncherActivity]: visibilityChanged oldVisibility=true newVisibility=false
+01-13 12:27:12.865  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.gamma.tabs.TabsHostViewManager
+01-13 12:27:12.866  6391  6391 W unknown:ViewManagerPropertyUpdater: Could not find generated setter for class com.swmansion.rnscreens.gamma.tabs.TabScreenViewManager
+01-13 12:27:12.877  1055  1055 D NexusLauncherModelDelegate: notifySmartspaceEvent: SmartspaceTargetEvent{mSmartspaceTarget=null, mSmartspaceActionId='null', mEventType=7}
+01-13 12:27:12.915  6391  6414 V AsyncStorageExpoMigration: No scoped database found
+01-13 12:27:12.940  6391  6414 W ReactNativeJS: This method is deprecated (as well as all React Native Firebase namespaced API) and will be removed in the next major release as part of move to match Firebase Web modular SDK API. Please see migration guide for more details: https://rnfirebase.io/migrating-to-v22 Please use `getApp()` instead.
+01-13 12:27:12.941  6391  6414 E ReactNativeJS: [Error: No Firebase App '[DEFAULT]' has been created - call firebase.initializeApp()]
+01-13 12:27:12.943  6391  6414 I ReactNativeJS: Running "MyApp1ReactNative"
+01-13 12:27:12.943  6391  6414 E ReactNativeJS: { [Invariant Violation: "MyApp1ReactNative" has not been registered. This can happen if:
+01-13 12:27:12.943  6391  6414 E ReactNativeJS: * Metro (the local dev server) is run from the wrong folder. Check if Metro is running, stop it and restart it in the current project.
+01-13 12:27:12.943  6391  6414 E ReactNativeJS: * A module failed to load due to an error and `AppRegistry.registerComponent` wasn't called.] name: 'Invariant Violation', framesToPop: 1 }
+--------- beginning of crash
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: FATAL EXCEPTION: mqt_native_modules
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: Process: com.myapp1reactnative, PID: 6391
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: com.facebook.react.common.JavascriptException: Error: No Firebase App '[DEFAULT]' has been created - call firebase.initializeApp(), stack:
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: getApp@1:767173
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: firebaseModuleWithApp@1:771528
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: anonymous@1:50304
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: loadModuleImplementation@1:43561
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: guardedLoadModule@1:43042
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: metroRequire@1:42681
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: global@1:42203
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at com.facebook.react.modules.core.ExceptionsManagerModule.reportException(SourceFile:76)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at com.facebook.react.bridge.JavaMethodWrapper.invoke(SourceFile:165)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at com.facebook.react.bridge.JavaModuleWrapper.invoke(SourceFile:25)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at com.facebook.jni.NativeRunnable.run(Native Method)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at android.os.Handler.handleCallback(Handler.java:995)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:103)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadHandler.dispatchMessage(SourceFile:6)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:248)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:338)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion.startNewBackgroundThread$lambda$1(SourceFile:38)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion.a(SourceFile:1)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at com.facebook.react.bridge.queue.c.run(SourceFile:1)
+01-13 12:27:12.948  6391  6415 E AndroidRuntime: 	at java.lang.Thread.run(Thread.java:1119)
+01-13 12:27:12.953   685  1501 W ActivityTaskManager:   Force finishing activity com.myapp1reactnative/.MainActivity
+01-13 12:27:12.958   926  1008 V WindowManagerShell: Transition requested (#36): android.os.BinderProxy@3896883 TransitionRequestInfo { type = CLOSE, triggerTask = TaskInfo{userId=0 taskId=18 effectiveUid=10222 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.myapp1reactnative/.MainActivity } baseActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} topActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} origActivity=null realActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} numActivities=1 lastActiveTime=7731753 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@7ab9a00} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 0 - 0, 0) topActivityInfo=ActivityInfo{8fcc239 com.myapp1reactnative.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isVisible=true isVisibleRequested=true isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=false lastNonFullscreenBounds=Rect(276, 696 - 805, 1776) capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=-9 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false eligibleForLetterboxEducation= false isLetterboxEducationEnabled= true isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 1080, 2400) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null cameraCompatTaskInfo=CameraCompatTaskInfo { freeformCameraCompatMode=inactive}} topActivityMainWindowFrame=null}, pipChange = null, remoteTransition = null, displayChange = null, flags = 16, debugId = 36 }
+01-13 12:27:12.962   685   711 I ActivityManager: Showing crash dialog for package com.myapp1reactnative u0
+01-13 12:27:12.976   549   549 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+01-13 12:27:13.017   685  6421 I DropBoxManagerService: add tag=data_app_crash isTagEnabled=true flags=0x2
+01-13 12:27:13.023  1055  1055 D VRI[NexusLauncherActivity]: visibilityChanged oldVisibility=false newVisibility=true
+01-13 12:27:13.023   549  1129 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+01-13 12:27:13.024  1055  1055 D NexusLauncherModelDelegate: notifySmartspaceEvent: SmartspaceTargetEvent{mSmartspaceTarget=null, mSmartspaceActionId='null', mEventType=6}
+01-13 12:27:13.047  1055  1055 D BaseDepthController: mSurface is not valid
+01-13 12:27:13.050   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:13.069   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:13.069   685   880 D BackgroundInstallControlService: Package event received: 0
+01-13 12:27:13.070  1055  1055 D BaseDepthController: setSurface:
+01-13 12:27:13.070  1055  1055 D BaseDepthController: 	mWaitingOnSurfaceValidity: true
+01-13 12:27:13.070  1055  1055 D BaseDepthController: 	mBaseSurface: Surface(name=com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity)/@0x3355cf4
+01-13 12:27:13.116   685   711 W Looper  : Slow dispatch took 118ms android.ui app=system_server main=false group=TOP_APP h=com.android.server.am.ActivityManagerService$UiHandler c=com.android.server.am.ErrorDialogController$$ExternalSyntheticLambda5@160a9ad m=0
+01-13 12:27:13.127   685   711 D CoreBackPreview: Window{2f250f5 u0 Application Error: com.myapp1reactnative}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.WindowOnBackInvokedDispatcher$OnBackInvokedCallbackWrapper@40dc073, mPriority=-1, mIsAnimationCallback=false, mOverrideBehavior=0}
+01-13 12:27:13.146  1055  1055 D StatsLog: LAUNCHER_ONRESUME
+01-13 12:27:13.147   926   936 V WindowManagerShell: onTransitionReady(transaction=2942052599098)
+01-13 12:27:13.149   926  1008 V WindowManagerShell: onTransitionReady (#36) android.os.BinderProxy@3896883: {id=36 t=CLOSE f=0x10 trk=0 r=[0@Point(0, 0)] c=[
+01-13 12:27:13.149   926  1008 V WindowManagerShell:         {m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP leash=Surface(name=Task=1)/@0x7e2407e sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+01-13 12:27:13.149   926  1008 V WindowManagerShell:         {m=CLOSE f=NONE leash=Surface(name=Task=18)/@0xa7009df sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+01-13 12:27:13.149   926  1008 V WindowManagerShell:         {m=TO_FRONT f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{ffbae50 showWhenLocked=false})/@0x630562c sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}
+01-13 12:27:13.149   926  1008 V WindowManagerShell:     ]}
+01-13 12:27:13.150  1055  1110 D QuickstepModelDelegate: notifyAppTargetEvent action=1 launchLocation=
+01-13 12:27:13.151   926  1008 V WindowManagerShell: Playing animation for (#36) android.os.BinderProxy@3896883@0
+01-13 12:27:13.151   926  1008 V ShellRecents: RecentsTransitionHandler.startAnimation: no controller found
+01-13 12:27:13.152   926  1008 V WindowManagerShell: Transition doesn't have explicit remote, search filters for match for {id=36 t=CLOSE f=0x10 trk=0 r=[0@Point(0, 0)] c=[{m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP leash=Surface(name=Task=1)/@0x7e2407e sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=CLOSE f=NONE leash=Surface(name=Task=18)/@0xa7009df sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=TO_FRONT f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{ffbae50 showWhenLocked=false})/@0x630562c sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}]}
+01-13 12:27:13.152   926  1008 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null taskFragmentToken=android.os.BinderProxy@145a045 windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@bd8739a, appThread = android.app.IApplicationThread$Stub$Proxy@17e54cb, debugName = overlayBackTransition }}
+01-13 12:27:13.152   926  1008 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@a224a8, appThread = android.app.IApplicationThread$Stub$Proxy@e24fbc1, debugName = LauncherToDream }}
+01-13 12:27:13.153   926  1008 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=TOP topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@2ba2f66, appThread = android.app.IApplicationThread$Stub$Proxy@29b72a7, debugName = QuickstepLaunchHome }}
+01-13 12:27:13.153   926  1008 D RemoteTransitionHandler: Found filterPair{{types=[] flags=0x0] notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=TOP topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@2ba2f66, appThread = android.app.IApplicationThread$Stub$Proxy@29b72a7, debugName = QuickstepLaunchHome }}
+01-13 12:27:13.153   926  1008 V WindowManagerShell:  Delegate animation for (#36) to RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@2ba2f66, appThread = android.app.IApplicationThread$Stub$Proxy@29b72a7, debugName = QuickstepLaunchHome }
+01-13 12:27:13.157  1055  1055 I NotificationListener: Handling notification state refresh for com.android.systemui#0
+01-13 12:27:13.163  1055  2582 E FrameEvents: addRelease: Did not find frame.
+01-13 12:27:13.164   685   710 V WindowManager: Sent Transition (#36) createdAt=01-13 12:27:12.953 via request=TransitionRequestInfo { type = CLOSE, triggerTask = TaskInfo{userId=0 taskId=18 effectiveUid=10222 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=com.myapp1reactnative/.MainActivity } baseActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} topActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} origActivity=null realActivity=ComponentInfo{com.myapp1reactnative/com.myapp1reactnative.MainActivity} numActivities=1 lastActiveTime=7731753 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{8ce0217 Task{a0f7b4b #18 type=standard A=10222:com.myapp1reactnative}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 0 - 0, 0) topActivityInfo=ActivityInfo{9241604 com.myapp1reactnative.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isVisible=true isVisibleRequested=true isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=false lastNonFullscreenBounds=Rect(276, 696 - 805, 1776) capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=-9 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false eligibleForLetterboxEducation= false isLetterboxEducationEnabled= true isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 1080, 2400) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null cameraCompatTaskInfo=CameraCompatTaskInfo { freeformCameraCompatMode=inactive}} topActivityMainWindowFrame=null}, pipChange = null, remoteTransition = null, displayChange = null, flags = 16, debugId = 36 }
+01-13 12:27:13.164   685   710 V WindowManager:     startWCT=WindowContainerTransaction { changes= {} hops= [] errorCallbackToken=null taskFragmentOrganizer=null }
+01-13 12:27:13.164   685   710 V WindowManager:     info={id=36 t=CLOSE f=0x10 trk=0 r=[0@Point(0, 0)] c=[
+01-13 12:27:13.164   685   710 V WindowManager:         {WCT{RemoteToken{7319a40 Task{759ffbb #1 type=home}}} m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP leash=Surface(name=Task=1)/@0x795aa3c sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+01-13 12:27:13.164   685   710 V WindowManager:         {WCT{RemoteToken{8ce0217 Task{a0f7b4b #18 type=standard A=10222:com.myapp1reactnative}}} m=CLOSE f=NONE leash=Surface(name=Task=18)/@0xde7e735 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+01-13 12:27:13.164   685   710 V WindowManager:         {m=TO_FRONT f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{ffbae50 showWhenLocked=false})/@0xb24e42f sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}
+01-13 12:27:13.164   685   710 V WindowManager:     ]}
+01-13 12:27:13.170  1055  1055 D b/311077782: LauncherAnimationRunner.setAnimation
+01-13 12:27:13.171  1428  1607 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+01-13 12:27:13.171  1428  1607 I AiAiEcho: EchoTargets: 
+01-13 12:27:13.171  1428  1607 I AiAiEcho: Filtered by AiAi flag check: 
+01-13 12:27:13.171  1428  1607 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+01-13 12:27:13.173   926  1008 V WindowManagerShell:  animated by com.android.wm.shell.transition.RemoteTransitionHandler@2007c40
+01-13 12:27:13.173  1428  1607 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+01-13 12:27:13.176  1428  1607 I AiAiEcho: #postPredictionTargets: Sending updates to UISurface home with targets# 0 (types=[])
+01-13 12:27:13.179  1055  1110 W HWUI    : Image decoding logging dropped!
+01-13 12:27:13.182   685   796 I ImeTracker: com.google.android.apps.nexuslauncher:75d60c12: onRequestHide at ORIGIN_SERVER reason HIDE_SAME_WINDOW_FOCUSED_WITHOUT_EDITOR fromUser false
+01-13 12:27:13.184  1055  1055 D InsetsController: hide(ime(), fromIme=false)
+01-13 12:27:13.184  1055  1055 I ImeTracker: com.google.android.apps.nexuslauncher:75d60c12: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+01-13 12:27:13.186  1339  1339 I GoogleInputMethodService: GoogleInputMethodService.onFinishInput():2043 
+01-13 12:27:13.188  1339  1339 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatus():100 repeatCheckTimes = 0, locked = false
+01-13 12:27:13.190  1339  1339 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1293 onStartInput(EditorInfo{EditorInfo{packageName=com.google.android.apps.nexuslauncher, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: EmojiCompatManager.getEmojiCompatIfLoaded():343 EmojiCompat.init() was never called.
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: java.lang.IllegalStateException: EmojiCompat is not initialized. Please call EmojiCompat.init() first
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at asx.p(PG:6)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at axb.b(PG:13)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at jnr.b(PG:2)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at jnr.c(PG:4)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at jnr.f(PG:3)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at jnx.c(PG:3)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at kif.cz(PG:47)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at lhl.run(PG:1025)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at jaf.execute(PG:12)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at nco.v(PG:13)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at lhn.m(PG:96)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at lhn.k(PG:25)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at kgn.onStartInput(PG:250)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at android.inputmethodservice.InputMethodService.doStartInput(InputMethodService.java:3521)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at android.inputmethodservice.InputMethodService$InputMethodImpl.startInput(InputMethodService.java:879)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at android.inputmethodservice.InputMethodService$InputMethodImpl.dispatchStartInput(InputMethodService.java:908)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at android.inputmethodservice.IInputMethodWrapper.executeMessage(IInputMethodWrapper.java:201)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at com.android.internal.os.HandlerCaller$MyHandler.handleMessage(HandlerCaller.java:44)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at android.os.Handler.dispatchMessage(Handler.java:110)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at android.os.Looper.loopOnce(Looper.java:248)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at android.os.Looper.loop(Looper.java:338)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at android.app.ActivityThread.main(ActivityThread.java:9067)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at java.lang.reflect.Method.invoke(Native Method)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+01-13 12:27:13.191  1339  1339 I EmojiCompatManager: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+01-13 12:27:13.192  1339  1339 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatus():100 repeatCheckTimes = 1, locked = false
+01-13 12:27:13.193   685  1818 W PackageConfigPersister: App-specific configuration not found for packageName: com.google.android.apps.nexuslauncher and userId: 0
+01-13 12:27:13.194   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=2
+01-13 12:27:13.195   507   507 I RanchuHwc: logCompositionFallbackIfChanged: layer 66 CompositionType fallback from 2 to 1
+01-13 12:27:13.210   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=3
+01-13 12:27:13.231   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=4
+01-13 12:27:13.242   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=5
+01-13 12:27:13.260   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=6
+01-13 12:27:13.275   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=7
+01-13 12:27:13.292   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=8
+01-13 12:27:13.310   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=9
+01-13 12:27:13.310   685   711 W Looper  : Slow dispatch took 187ms android.ui app=system_server main=false group=TOP_APP h=android.view.Choreographer$FrameHandler c=android.view.Choreographer$FrameDisplayEventReceiver@655a9df m=0
+01-13 12:27:13.313  1248  1265 I FontLog : (REDACTED) Received query %s, URI %s
+01-13 12:27:13.313  1248  1265 I FontLog : (REDACTED) Query [%s] resolved to %s
+01-13 12:27:13.314   685   711 W Looper  : Slow delivery took 213ms android.ui app=system_server main=false group=TOP_APP h=com.android.server.wm.DisplayPolicy$PolicyHandler c=com.android.server.wm.DisplayPolicy$$ExternalSyntheticLambda14@7ce08f4 m=0
+01-13 12:27:13.319  1248  1265 I FontLog : (REDACTED) Fetch %s end status %s
+01-13 12:27:13.325   685   711 W Looper  : Drained
+01-13 12:27:13.326   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=10
+01-13 12:27:13.331  1248  2131 I FontLog : (REDACTED) Pulling font file for id = %d, cache size = %d
+01-13 12:27:13.348  1248  2131 I FontLog : (REDACTED) Pulling font file for id = %d, cache size = %d
+01-13 12:27:13.359   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=11
+01-13 12:27:13.392   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=12
+01-13 12:27:13.410   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=13
+01-13 12:27:13.425   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=14
+01-13 12:27:13.442   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=15
+01-13 12:27:13.460   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=16
+01-13 12:27:13.477   549   549 E SurfaceFlinger: Out of order buffers detected for RequestedLayerState{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity#351 parentId=102} producedId=15 frameNumber=35 -> producedId=15 frameNumber=17

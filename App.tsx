@@ -8,19 +8,15 @@ import AppNavigator from './src/navigation/AppNavigator';
  * MyApp1 React Native App
  * Entry point that wraps the app with necessary providers
  */
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
 function App(): React.JSX.Element {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <ToastProvider>
-          <NavigationContainer>
-            <AppNavigator />
-          </NavigationContainer>
-        </ToastProvider>
-      </AuthProvider>
-    </GestureHandlerRootView>
+    <AuthProvider>
+      <ToastProvider>
+        <NavigationContainer>
+          <AppNavigator />
+        </NavigationContainer>
+      </ToastProvider>
+    </AuthProvider>
   );
 }
 

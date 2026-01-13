@@ -87,7 +87,7 @@ const AuthScreen: React.FC = () => {
                     </Text>
                     <View style={styles.googleIconWrapper}>
                       <Image 
-                        source={require('../../assets/google_logo.png')} 
+                        source={require('../../assets/Logo.png')} 
                         style={styles.googleIcon}
                         resizeMode="contain"
                       />
