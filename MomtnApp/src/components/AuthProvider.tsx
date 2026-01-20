@@ -28,12 +28,12 @@ const loadUserBackgroundPreference = async (userId: string) => {
   try {
     const savedGradient = localStorage.getItem(`user-background-${userId}`);
     const gradientId = savedGradient || 'default';
-    
+
     console.log(`Loading background preference for user ${userId}:`, gradientId);
-    
+
     // Dispatch event to apply the user's background
-    window.dispatchEvent(new CustomEvent('apply-gradient', { 
-      detail: { gradientId, userId } 
+    window.dispatchEvent(new CustomEvent('apply-gradient', {
+      detail: { gradientId, userId }
     }));
   } catch (error) {
     console.error('Error loading user background preference:', error);
@@ -49,26 +49,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     console.log("Setting up auth listener...");
-    
+
     // Check if this is an OAuth callback
-    const isOAuthCallback = window.location.hash.includes('access_token') || 
-                           window.location.search.includes('code');
+    const isOAuthCallback = window.location.hash.includes('access_token') ||
+      window.location.search.includes('code');
     console.log("Initial OAuth callback check:", isOAuthCallback);
-    
+
     // First set up the auth listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state changed:", event, newSession?.user?.email);
-        
+
         if (event === 'INITIAL_SESSION') {
           console.log("Initial session detected");
           setSession(newSession);
           setUser(newSession?.user ?? null);
-          
+
           if (newSession?.user?.id) {
             await loadUserBackgroundPreference(newSession.user.id);
           }
-          
+
           // For OAuth callback on initial session, redirect to home
           if (newSession && isOAuthCallback) {
             console.log("OAuth callback with session, redirecting to home");
@@ -80,21 +80,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("User signed in or token refreshed");
           setSession(newSession);
           setUser(newSession?.user ?? null);
-          
+
           // Load user's background preference when they sign in
           if (newSession?.user?.id) {
             await loadUserBackgroundPreference(newSession.user.id);
           }
-          
+
           // For Google OAuth and new users, always redirect to home
           if (newSession) {
             // Check if this is coming from OAuth callback or if on auth page
-            const currentIsOAuth = window.location.hash.includes('access_token') || 
-                                  window.location.search.includes('code');
+            const currentIsOAuth = window.location.hash.includes('access_token') ||
+              window.location.search.includes('code');
             const isOnAuthPage = location.pathname === '/auth';
-            
+
             console.log("OAuth callback detected:", currentIsOAuth, "On auth page:", isOnAuthPage);
-            
+
             if (currentIsOAuth || isOnAuthPage) {
               console.log("Redirecting to home after successful authentication");
               setTimeout(() => {
@@ -106,12 +106,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("User signed out");
           setSession(null);
           setUser(null);
-          
+
           // Apply default background when user signs out
-          window.dispatchEvent(new CustomEvent('apply-gradient', { 
-            detail: { gradientId: 'default', userId: null } 
+          window.dispatchEvent(new CustomEvent('apply-gradient', {
+            detail: { gradientId: 'default', userId: null }
           }));
-          
+
           navigate('/auth');
         } else if (event === 'USER_UPDATED') {
           console.log("User updated");
@@ -123,7 +123,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // ResetPasswordPage will handle this token
           navigate('/reset-password');
         }
-        
+
         setLoading(false);
       }
     );
@@ -134,21 +134,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Getting current session...");
         setLoading(true);
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.error('Error getting session:', error);
           return;
         }
-        
+
         console.log("Current session:", session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         // Load user's background preference if user is logged in
         if (session?.user?.id) {
           await loadUserBackgroundPreference(session.user.id);
         }
-        
+
         // Redirect if needed - but only if user is logged in and on auth page
         if (location.pathname === '/auth' && session) {
           console.log("User already logged in, redirecting from auth page to home");
@@ -170,10 +170,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log("Attempting to sign up:", email);
       const displayName = email.split('@')[0];
-      
+
       // Sign up the user with display name in metadata
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
+      const { data, error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
           data: {
@@ -181,9 +181,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
       });
-      
+
       console.log("Sign up result:", error ? `Error: ${error.message}` : "Success", data);
-      
+
       // Save user to public.users table
       if (data.user) {
         await supabase
@@ -195,20 +195,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             created_at: new Date().toISOString()
           });
       }
-      
+
       // Redirect to home page after successful signup
       if (!error && data.user) {
         setUser(data.user);
         setSession(data.session);
-        
+
         // Load default background for new user
         if (data.user.id) {
           await loadUserBackgroundPreference(data.user.id);
         }
-        
+
         navigate('/', { replace: true });
       }
-      
+
       return { error };
     } catch (error: any) {
       console.error('Error during sign up:', error);
@@ -220,11 +220,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log("Attempting to sign in:", email);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      
+
       // Ensure user exists in public.users table
       if (data.user) {
         const displayName = data.user.user_metadata?.full_name || email.split('@')[0];
-        
+
         await supabase
           .from('users')
           .upsert({
@@ -236,9 +236,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             onConflict: 'id'
           });
       }
-      
+
       console.log("Sign in result:", error ? `Error: ${error.message}` : "Success", data);
-      
+
       if (!error && data.user) {
         // Load user's background preference
         if (data.user.id) {

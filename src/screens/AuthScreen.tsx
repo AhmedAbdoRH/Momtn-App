@@ -51,7 +51,7 @@ const AuthScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
@@ -86,8 +86,8 @@ const AuthScreen: React.FC = () => {
                       متابعة باستخدام جوجل
                     </Text>
                     <View style={styles.googleIconWrapper}>
-                      <Image 
-                        source={require('../../assets/Logo.png')} 
+                      <Image
+                        source={require('../../assets/Logo.png')}
                         style={styles.googleIcon}
                         resizeMode="contain"
                       />

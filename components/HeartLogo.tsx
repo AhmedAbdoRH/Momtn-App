@@ -8,9 +8,9 @@ interface HeartLogoProps {
 }
 
 // Custom logo component with float animation
-const HeartLogo: React.FC<HeartLogoProps> = ({ 
-  size = 'medium', 
-  animated = true 
+const HeartLogo: React.FC<HeartLogoProps> = ({
+  size = 'medium',
+  animated = true
 }) => {
   const floatAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -79,8 +79,8 @@ const HeartLogo: React.FC<HeartLogoProps> = ({
   return (
     <View style={styles.container}>
       {/* Main logo with float animation */}
-      <Animated.Image 
-        source={require('../assets/Logo.png')} 
+      <Animated.Image
+        source={require('../assets/Logo.png')}
         style={[
           styles.customLogo,
           {
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: Spacing.xl,
+    marginVertical: Spacing.md,
     position: 'relative',
   },
   customLogo: {

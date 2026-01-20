@@ -74,7 +74,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
 
         // Also update Auth metadata for consistency
         const { error: updateError } = await supabase.auth.updateUser({
-          data: { 
+          data: {
             full_name: displayName.trim(),
             greeting_message: greetingMessage.trim()
           }
@@ -83,7 +83,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
         if (updateError) throw updateError;
 
         await AsyncStorage.setItem(`userGreeting_${user.id}`, greetingMessage.trim());
-        
+
         // Refresh user data globally
         if (refreshUser) {
           await refreshUser();
@@ -208,9 +208,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     <View style={styles.tabContent}>
       <View style={styles.aboutHeader}>
         <Text style={styles.appName}>ممتن Momtn</Text>
-        <Text style={styles.appVersion}>الإصدار 1.0.0</Text>
+        <Text style={styles.appVersion}>الإصدار 1.1.1</Text>
       </View>
-      
+
       <Text style={styles.aboutDescription}>
         تطبيق ممتن هو مساحتك الخاصة لتوثيق اللحظات الجميلة والنعم التي تمر بها يومياً.
         هدفنا هو تعزيز الإيجابية والامتنان في حياتك اليومية.

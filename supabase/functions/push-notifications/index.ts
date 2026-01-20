@@ -24,7 +24,7 @@ async function getAccessToken(serviceAccount: any) {
         aud: "https://oauth2.googleapis.com/token",
         iat: getNumericDate(0),
         exp: getNumericDate(3600),
-        scope: "https://www.googleapis.com/auth/cloud-platform", // نطاق شامل لضمان القبول
+        scope: "https://www.googleapis.com/auth/firebase.messaging",
       },
       await crypto.subtle.importKey(
         "pkcs8",
@@ -112,126 +112,122 @@ serve(async (req) => {
     const type = String(record.type || 'new_photo');
     const groupId = String(record.group_id || '');
     const notificationId = String(record.id || '');
+    const photoId = String(record.photo_id || record.data?.photo_id || '');
 
-    // محاولة الإرسال عبر FCM v1 (الأحدث)
+    // FCM v1 فقط - تم إيقاف Legacy API من قبل Google نهائياً في يونيو 2024
     const SERVICE_ACCOUNT_JSON = Deno.env.get('FCM_SERVICE_ACCOUNT');
-    const SERVER_KEY = Deno.env.get('FCM_SERVER_KEY');
-    let v1Success = false;
 
-    if (SERVICE_ACCOUNT_JSON) {
-      try {
-        console.log("Attempting FCM v1 delivery...");
-        const serviceAccount = JSON.parse(SERVICE_ACCOUNT_JSON);
-        const accessToken = await getAccessToken(serviceAccount);
-
-        if (accessToken) {
-          const FCM_V1_URL = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
-          console.log(`FCM v1 URL: ${FCM_V1_URL}`);
-
-          for (const t of tokens) {
-            try {
-              // نستخدم data-only message لمنع الإشعار المكرر
-              // التطبيق هو اللي هيتحكم في عرض الإشعار
-              const fcmBody = {
-                message: {
-                  token: t.token,
-                  // لا نرسل notification object - فقط data
-                  data: {
-                    title,
-                    body,
-                    type,
-                    group_id: groupId,
-                    notification_id: notificationId
-                  },
-                  android: {
-                    priority: 'high'
-                    // لا نضيف notification config هنا
-                  }
-                }
-              };
-
-              const res = await fetch(FCM_V1_URL, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${accessToken}`
-                },
-                body: JSON.stringify(fcmBody)
-              });
-
-              const resultText = await res.text();
-              if (res.status === 200) {
-                v1Success = true;
-                console.log(`FCM v1 success for token ${t.token.substring(0, 10)}...`);
-              } else {
-                console.error(`FCM v1 error (Status ${res.status}) for token ${t.token.substring(0, 10)}:`, resultText);
-              }
-            } catch (tokenErr) {
-              console.error(`FCM v1 fetch exception for token ${t.token.substring(0, 10)}:`, tokenErr.message);
-            }
-          }
-        } else {
-          console.error("Failed to get FCM v1 access token");
-        }
-      } catch (e) {
-        console.error("FCM v1 process failed:", e.message);
-      }
+    if (!SERVICE_ACCOUNT_JSON) {
+      console.error("FCM_SERVICE_ACCOUNT not configured");
+      return new Response(JSON.stringify({ error: "FCM credentials missing" }), { status: 500 });
     }
 
-    // إذا لم يتوفر v1 أو فشل، نجرب الطريقة القديمة (Legacy) باستخدام Server Key
-    if (!v1Success && SERVER_KEY) {
-      console.log("Attempting Legacy FCM delivery fallback...");
-      const CLEAN_SERVER_KEY = SERVER_KEY.trim();
+    let successCount = 0;
+    let failCount = 0;
+    const invalidTokens: string[] = [];
+
+    try {
+      console.log("Using FCM v1 API...");
+      const serviceAccount = JSON.parse(SERVICE_ACCOUNT_JSON);
+      const accessToken = await getAccessToken(serviceAccount);
+
+      if (!accessToken) {
+        console.error("Failed to get FCM v1 access token");
+        return new Response(JSON.stringify({ error: "Failed to get access token" }), { status: 500 });
+      }
+
+      const FCM_V1_URL = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
+      console.log(`FCM v1 URL: ${FCM_V1_URL}`);
 
       for (const t of tokens) {
         try {
-          const legacyBody = {
-            to: t.token,
-            priority: "high",
-            notification: {
-              title: title,
-              body: body,
-              sound: "default",
-              badge: "1",
-              click_action: "FCM_PLUGIN_ACTIVITY",
-              icon: "fcm_push_icon",
-              android_channel_id: "momtn-notifications"
-            },
-            data: {
-              title: title,
-              body: body,
-              type: type,
-              group_id: groupId,
-              notification_id: notificationId
+          // Generate unique dedupe key to prevent duplicate notifications
+          const dedupeKey = `${type}_${notificationId || photoId || Date.now()}`;
+
+          const fcmBody = {
+            message: {
+              token: t.token,
+              data: {
+                title,
+                body,
+                type,
+                group_id: groupId,
+                notification_id: notificationId,
+                photo_id: photoId,
+                dedupe_key: dedupeKey,
+              },
+              android: {
+                priority: 'high',
+                notification: {
+                  title,
+                  body,
+                  sound: 'default',
+                  channel_id: 'momtn-notifications',
+                  icon: 'ic_launcher',
+                  tag: dedupeKey, // يمنع التكرار على مستوى النظام
+                }
+              }
             }
           };
 
-          // ملاحظة: قد تعود هذه الروابط بـ 404 لأن جوجل أوقفت الـ Legacy API
-          const res = await fetch("https://fcm.googleapis.com/fcm/send", {
+          const res = await fetch(FCM_V1_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `key=${CLEAN_SERVER_KEY}`
+              'Authorization': `Bearer ${accessToken}`
             },
-            body: JSON.stringify(legacyBody)
+            body: JSON.stringify(fcmBody)
           });
 
           const resultText = await res.text();
+
           if (res.status === 200) {
-            console.log(`Legacy FCM success for token ${t.token.substring(0, 10)}...`);
+            successCount++;
+            console.log(`FCM v1 success for token ${t.token.substring(0, 10)}...`);
           } else {
-            console.error(`Legacy FCM failed (Status ${res.status}) for token ${t.token.substring(0, 10)}:`, resultText);
+            failCount++;
+            console.error(`FCM v1 error (Status ${res.status}) for token ${t.token.substring(0, 10)}:`, resultText);
+
+            // التعامل مع التوكنات المنتهية أو غير الصالحة
+            if (resultText.includes('UNREGISTERED') || resultText.includes('INVALID_ARGUMENT') || resultText.includes('NOT_FOUND')) {
+              console.log(`Marking token as invalid: ${t.token.substring(0, 10)}...`);
+              invalidTokens.push(t.token);
+            }
           }
-        } catch (e) {
-          console.error(`Legacy FCM fetch exception:`, e.message);
+        } catch (tokenErr) {
+          failCount++;
+          console.error(`FCM v1 fetch exception for token ${t.token.substring(0, 10)}:`, tokenErr.message);
         }
       }
-    } else if (!v1Success && !SERVER_KEY && !SERVICE_ACCOUNT_JSON) {
-      console.error("No FCM credentials found");
-      return new Response(JSON.stringify({ error: "No FCM credentials" }), { status: 500 });
+
+      // حذف التوكنات غير الصالحة من قاعدة البيانات
+      if (invalidTokens.length > 0) {
+        console.log(`Removing ${invalidTokens.length} invalid tokens...`);
+        const { error: deleteError } = await supabase
+          .from('device_tokens')
+          .delete()
+          .in('token', invalidTokens);
+
+        if (deleteError) {
+          console.error("Error deleting invalid tokens:", deleteError);
+        } else {
+          console.log(`Successfully removed ${invalidTokens.length} invalid tokens`);
+        }
+      }
+
+    } catch (e) {
+      console.error("FCM v1 process failed:", e.message);
+      return new Response(JSON.stringify({ error: e.message }), { status: 500 });
     }
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    console.log(`Notification summary: ${successCount} success, ${failCount} failed, ${invalidTokens.length} tokens removed`);
+    return new Response(JSON.stringify({
+      success: true,
+      sent: successCount,
+      failed: failCount,
+      tokensRemoved: invalidTokens.length
+    }), { status: 200 });
+
   } catch (err) {
     console.error("Global function error:", err.message);
     return new Response(err.message, { status: 500 });

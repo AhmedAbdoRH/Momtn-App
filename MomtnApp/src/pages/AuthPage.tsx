@@ -22,7 +22,7 @@ const AuthPage = () => {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email) {
       uiToast({
         variant: "destructive",
@@ -31,14 +31,14 @@ const AuthPage = () => {
       });
       return;
     }
-    
+
     if (mode === 'resetPassword') {
       setLoading(true);
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         });
-        
+
         if (error) {
           uiToast({
             variant: "destructive",
@@ -67,7 +67,7 @@ const AuthPage = () => {
       }
       return;
     }
-    
+
     if (!password) {
       uiToast({
         variant: "destructive",
@@ -76,15 +76,15 @@ const AuthPage = () => {
       });
       return;
     }
-    
+
     setLoading(true);
     try {
       let error;
-      
+
       if (mode === 'signIn') {
         const result = await signIn(email, password);
         error = result.error;
-        
+
         if (error) {
           let errorMessage = "فشل في تسجيل الدخول";
           if (error.message === "Invalid login credentials") {
@@ -95,20 +95,20 @@ const AuthPage = () => {
             console.error("Sign-in error details:", error);
             errorMessage = `خطأ: ${error.message || "حدث خطأ غير معروف"}`;
           }
-          
+
           uiToast({
             variant: "destructive",
             title: "حدث خطأ",
             description: errorMessage,
           });
-          
+
           // Also use the more visible Sonner toast
           toast.error(errorMessage);
         }
       } else {
         const result = await signUp(email, password);
         error = result.error;
-        
+
         if (error) {
           let errorMessage = "فشل في إنشاء الحساب";
           if (error.message?.includes("already registered")) {
@@ -119,13 +119,13 @@ const AuthPage = () => {
             console.error("Sign-up error details:", error);
             errorMessage = `خطأ: ${error.message || "حدث خطأ غير معروف"}`;
           }
-          
+
           uiToast({
             variant: "destructive",
             title: "حدث خطأ",
             description: errorMessage,
           });
-          
+
           toast.error(errorMessage);
         }
       }
@@ -136,7 +136,7 @@ const AuthPage = () => {
         title: "حدث خطأ غير متوقع",
         description: "فشل في عملية التسجيل، يرجى المحاولة مرة أخرى",
       });
-      
+
       toast.error("حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى");
     } finally {
       setLoading(false);
@@ -147,7 +147,7 @@ const AuthPage = () => {
     try {
       setLoading(true);
       console.log("Attempting to sign in with Google...");
-      
+
       const { error, data } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -167,13 +167,13 @@ const AuthPage = () => {
         } else {
           errorMessage = `خطأ: ${error.message || "حدث خطأ غير معروف"}`;
         }
-        
+
         uiToast({
           variant: "destructive",
           title: "حدث خطأ",
           description: errorMessage,
         });
-        
+
         toast.error(errorMessage);
       } else {
         console.log("Google OAuth initiated:", data);
@@ -185,17 +185,17 @@ const AuthPage = () => {
         title: "حدث خطأ",
         description: "فشل في تسجيل الدخول بواسطة جوجل: " + (error.message || "خطأ غير معروف"),
       });
-      
+
       toast.error("فشل في تسجيل الدخول بواسطة جوجل");
     } finally {
       setLoading(false);
     }
   };
-  
+
   const renderFormContent = () => {
     if (mode === 'resetPassword') {
       return (
-        <div className="space-y-3 rounded-md shadow-sm"> 
+        <div className="space-y-3 rounded-md shadow-sm">
           <div>
             <label htmlFor="email-address" className="sr-only">
               البريد الإلكتروني
@@ -218,7 +218,7 @@ const AuthPage = () => {
     }
 
     return (
-      <div className="space-y-3 rounded-md shadow-sm"> 
+      <div className="space-y-3 rounded-md shadow-sm">
         <div>
           <label htmlFor="email-address" className="sr-only">
             البريد الإلكتروني
@@ -253,7 +253,7 @@ const AuthPage = () => {
             dir="rtl"
           />
           {mode === 'signIn' && (
-            <div className="mt-1 text-right"> 
+            <div className="mt-1 text-right">
               <span
                 className="text-sm text-indigo-300 hover:text-indigo-200 cursor-pointer"
                 onClick={() => setMode('resetPassword')}
@@ -266,10 +266,10 @@ const AuthPage = () => {
       </div>
     );
   };
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#2D1F3D] via-[#1A1F2C] to-[#3D1F2C] flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-6 bg-gray-900/60 backdrop-blur-xl p-6 rounded-2xl shadow-xl"> 
+      <div className="max-w-md w-full space-y-6 bg-gray-900/60 backdrop-blur-xl p-6 rounded-2xl shadow-xl">
         <div className="text-center">
           <div className="inline-block w-29 h-29">
             <img
@@ -279,15 +279,15 @@ const AuthPage = () => {
             />
           </div>
           <p className="text-gray-400 text-xs -mt-1 mb-4">Version 2.0</p>
-          <h2 className="text-xl font-bold text-white mt-2"> 
-            {mode === 'signIn' 
-              ? 'تسجيل الدخول' 
-              : mode === 'signUp' 
-                ? 'إنشاء حساب جديد' 
+          <h2 className="text-xl font-bold text-white mt-2">
+            {mode === 'signIn'
+              ? 'تسجيل الدخول'
+              : mode === 'signUp'
+                ? 'إنشاء حساب جديد'
                 : 'استعادة كلمة المرور'}
           </h2>
         </div>
-        <form className="mt-6 space-y-5" onSubmit={handleAuth}> 
+        <form className="mt-6 space-y-5" onSubmit={handleAuth}>
           {renderFormContent()}
 
           <div>
@@ -305,10 +305,10 @@ const AuthPage = () => {
                   جاري التحميل...
                 </span>
               ) : (
-                mode === 'signIn' 
-                  ? 'تسجيل الدخول' 
-                  : mode === 'signUp' 
-                    ? 'إنشاء حساب' 
+                mode === 'signIn'
+                  ? 'تسجيل الدخول'
+                  : mode === 'signUp'
+                    ? 'إنشاء حساب'
                     : 'إرسال رابط استعادة كلمة المرور'
               )}
             </Button>
@@ -341,7 +341,7 @@ const AuthPage = () => {
               التسجيل باستخدام جوجل
             </Button>
           </div>
-  
+
           <div className="text-center">
             <button
               type="button"

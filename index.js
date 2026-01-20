@@ -81,7 +81,9 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
       console.log('Saved pending notification for navigation:', pendingData);
     }
 
+    // إذا كان FCM قد عرض الإشعار بالفعل (عندما يكون notification موجوداً)، لا نعرضه مرة أخرى
     if (remoteMessage?.notification) {
+      console.log('FCM already displayed notification, skipping notifee display');
       return;
     }
   } catch (error) {

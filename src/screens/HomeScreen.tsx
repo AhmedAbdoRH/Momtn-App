@@ -353,11 +353,10 @@ const HomeScreen: React.FC = () => {
       const data = remoteMessage.data;
 
       if (notification || data) {
-        setToast({
-          visible: true,
+        showToast({
           message: String(notification?.body || data?.body || data?.message || 'إشعار جديد'),
           type: 'info',
-          data: data
+          onPress: () => handleNotificationData(data)
         });
       }
     });
@@ -555,9 +554,9 @@ const HomeScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error in handleCreateGroup:', error);
-      showToast({ 
-        message: error?.message || 'تعذر إنشاء المجموعة. تأكد من اتصالك بالإنترنت وحاول مرة أخرى', 
-        type: 'error' 
+      showToast({
+        message: error?.message || 'تعذر إنشاء المجموعة. تأكد من اتصالك بالإنترنت وحاول مرة أخرى',
+        type: 'error'
       });
     } finally {
       setIsLoading(false);
@@ -640,7 +639,7 @@ const HomeScreen: React.FC = () => {
         colors={[Colors.authGradientStart, Colors.authGradientMiddle, Colors.authGradientEnd]}
         style={styles.gradient}
       >
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
           {/* Sidebar Drawer */}
           <Animated.View
             style={[
@@ -655,7 +654,7 @@ const HomeScreen: React.FC = () => {
               <View style={styles.centeredLogo}>
                 <HeartLogo size="small" animated={false} />
               </View>
-              <Text style={styles.sidebarVersionText}>الإصدار 1.0.5</Text>
+              <Text style={styles.sidebarVersionText}>الإصدار 1.1.1</Text>
             </View>
 
             <ScrollView style={styles.sidebarContent}>
@@ -1325,7 +1324,8 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.xl,
-    paddingTop: 50,
+    paddingTop: 0,
+    marginTop: 50, // Moved more down as requested
     alignItems: 'center',
   },
   topButton: {
@@ -1362,7 +1362,7 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: Typography.body.fontSize,
     textAlign: 'center',
-    marginVertical: Spacing.xl,
+    marginVertical: Spacing.md,
     paddingHorizontal: Spacing.xl,
     flex: 1,
   },
@@ -1540,7 +1540,7 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   sidebarHeader: {
-    paddingTop: 40,
+    paddingTop: 10,
     paddingBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1551,7 +1551,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
     transform: [{ scale: 0.8 }],
-    marginTop: -10,
+    marginTop: 0,
   },
   sidebarVersionText: {
     color: 'rgba(255, 255, 255, 0.3)',

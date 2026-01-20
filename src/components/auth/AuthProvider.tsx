@@ -110,7 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Subscribe to general topic for testing
         await messaging().subscribeToTopic('all_users');
-        
+
         const platform = Platform.OS;
 
         // Clean up old tokens for this user on this platform that are different from current
@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .eq('user_id', userId)
           .eq('platform', platform)
           .neq('token', token);
-        
+
         if (deleteError) console.error('Error cleaning old tokens:', deleteError);
 
         const { error } = await supabase.from('device_tokens').upsert(

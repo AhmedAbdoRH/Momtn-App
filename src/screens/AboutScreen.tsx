@@ -18,7 +18,7 @@ const AboutScreen: React.FC = () => {
   const navigation = useNavigation();
 
   const openLink = (url: string) => {
-    Linking.openURL(url).catch(() => {});
+    Linking.openURL(url).catch(() => { });
   };
 
   const contributors = [
