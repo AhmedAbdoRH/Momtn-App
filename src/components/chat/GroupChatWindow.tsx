@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Swipeable } from 'react-native-gesture-handler';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../../../theme';
 import { useGroupChat, ChatMessage } from '../../hooks/useGroupChat';
 
@@ -36,6 +37,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<any>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const shouldScrollToEnd = useRef(true);
@@ -63,25 +65,15 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 
   // التمرير للأسفل عند تغيير حجم المحتوى
   const handleContentSizeChange = () => {
-    if (shouldScrollToEnd.current && messages.length > 0) {
-      flatListRef.current?.scrollToEnd({ animated: !isFirstLoad.current });
-      isFirstLoad.current = false;
-    }
+    // في حالة inverted، الأسفل هو البداية (0)
   };
 
-  // عند بداية السحب يدوياً، نوقف التمرير التلقائي مؤقتاً
-  const handleScrollBeginDrag = () => {
-    shouldScrollToEnd.current = false;
-  };
-
-  // عند وصول رسالة جديدة، نعيد تفعيل التمرير التلقائي
+  // عند وصول رسالة جديدة، التمرير التلقائي يعمل طبيعياً في inverted
   useEffect(() => {
     if (messages.length > 0) {
-      // لو الرسالة الأخيرة من المستخدم الحالي، نمرر للأسفل
-      const lastMessage = messages[messages.length - 1];
+      const lastMessage = messages[0]; // الرسالة الأحدث هي الأولى في المصفوفة
       if (lastMessage.user_id === currentUserId) {
-        shouldScrollToEnd.current = true;
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }
     }
   }, [messages.length, currentUserId]);
@@ -105,26 +97,41 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     return 'مستخدم';
   };
 
-  const handleSend = async () => {
-    if (sending) return;
+  // اختيار صورة
+  const handlePickImage = async () => {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.7,
+    });
 
-    const textToSend = inputText.trim();
-    if (!textToSend) {
-      // إرسال قلب إذا كان الحقل فارغاً
-      setSending(true);
-      await sendMessage('❤️', replyingTo?.id);
-      setReplyingTo(null);
-      setSending(false);
-      return;
+    if (result.assets && result.assets.length > 0) {
+      setSelectedImage(result.assets[0]);
     }
+  };
+
+  // إرسال الرسالة
+  const handleSend = async () => {
+    if ((!inputText.trim() && !selectedImage) || sending) return;
 
     setSending(true);
-    const success = await sendMessage(textToSend, replyingTo?.id);
-    if (success) {
-      setInputText('');
-      setReplyingTo(null);
+    try {
+      const success = await sendMessage(
+        inputText.trim(),
+        selectedImage,
+        replyingTo?.id
+      );
+
+      if (success) {
+        setInputText('');
+        setSelectedImage(null);
+        setReplyingTo(null);
+        shouldScrollToEnd.current = true;
+      }
+    } catch (err) {
+      console.error('Send error:', err);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   const formatTime = (dateString: string) => {
@@ -258,13 +265,24 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                   </View>
                 )}
 
-                <Text style={[
-                  styles.messageText,
-                  isMe ? styles.myMessageText : styles.otherMessageText,
-                  item.content === '❤️' && { fontSize: 45, lineHeight: 55, textAlign: 'center' }
-                ]}>
-                  {item.content}
-                </Text>
+                {/* عرض الصورة إذا وجدت */}
+                {item.image_url && (
+                  <Image
+                    source={{ uri: item.image_url }}
+                    style={styles.messageImage}
+                    resizeMode="cover"
+                  />
+                )}
+
+                {item.content ? (
+                  <Text style={[
+                    styles.messageText,
+                    isMe ? styles.myMessageText : styles.otherMessageText,
+                    item.content === '❤️' && { fontSize: 45, lineHeight: 55, textAlign: 'center' }
+                  ]}>
+                    {item.content}
+                  </Text>
+                ) : null}
 
                 <View style={styles.messageFooter}>
                   <Text style={[
@@ -357,29 +375,29 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                 data={messages}
                 renderItem={renderMessage}
                 keyExtractor={(item) => item.id}
+                inverted={true}
                 contentContainerStyle={[
                   styles.listContent,
                   messages.length === 0 && styles.listContentEmpty
                 ]}
                 ListEmptyComponent={renderEmptyState}
                 onEndReached={loadMoreMessages}
-                onEndReachedThreshold={0.3}
-                ListHeaderComponent={
-                  hasMore && messages.length > 0 ? (
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={
+                  loading && messages.length > 0 ? (
+                    <View style={{ paddingVertical: 10 }}>
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    </View>
+                  ) : (hasMore && messages.length > 0 ? (
                     <TouchableOpacity
                       style={styles.loadMoreButton}
                       onPress={loadMoreMessages}
                     >
                       <Text style={styles.loadMoreText}>تحميل رسائل أقدم</Text>
                     </TouchableOpacity>
-                  ) : null
+                  ) : null)
                 }
                 showsVerticalScrollIndicator={false}
-                onContentSizeChange={handleContentSizeChange}
-                onScrollBeginDrag={handleScrollBeginDrag}
-                maintainVisibleContentPosition={{
-                  minIndexForVisible: 0,
-                }}
               />
             )}
 
@@ -392,6 +410,19 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 
             {/* Input Area */}
             <View style={styles.bottomSection}>
+              {/* معاينة الصورة المختارة */}
+              {selectedImage && (
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: selectedImage.uri }} style={styles.imagePreview} />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => setSelectedImage(null)}
+                  >
+                    <Icon name="close-circle" size={24} color={Colors.error} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* شريط الرد المفعّل */}
               {replyingTo && (
                 <View style={styles.replyBar}>
@@ -412,20 +443,11 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 
               <View style={styles.inputContainer}>
                 <TouchableOpacity
-                  style={[styles.sendButton, sending && styles.sendButtonDisabled]}
-                  onPress={handleSend}
+                  style={styles.imagePickerButton}
+                  onPress={handlePickImage}
                   disabled={sending}
                 >
-                  {sending ? (
-                    <ActivityIndicator size="small" color={Colors.textPrimary} />
-                  ) : (
-                    <Icon
-                      name={inputText.trim() ? "send" : "heart"}
-                      size={inputText.trim() ? 20 : 24}
-                      color={Colors.textPrimary}
-                      style={!inputText.trim() && { transform: [{ scale: 1.1 }] }}
-                    />
-                  )}
+                  <Icon name="image" size={26} color="#00E676" />
                 </TouchableOpacity>
 
                 <TextInput
@@ -439,6 +461,23 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                   maxLength={1000}
                   textAlign="right"
                 />
+
+                <TouchableOpacity
+                  style={[styles.sendButton, sending && styles.sendButtonDisabled]}
+                  onPress={handleSend}
+                  disabled={sending}
+                >
+                  {sending ? (
+                    <ActivityIndicator size="small" color={Colors.textPrimary} />
+                  ) : (
+                    <Icon
+                      name={inputText.trim() || selectedImage ? "send" : "heart"}
+                      size={inputText.trim() || selectedImage ? 20 : 24}
+                      color={Colors.textPrimary}
+                      style={!(inputText.trim() || selectedImage) && { transform: [{ scale: 1.1 }] }}
+                    />
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
           </KeyboardAvoidingView>
@@ -504,6 +543,39 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  imagePickerButton: {
+       width: 44,
+       height: 44,
+       justifyContent: 'center',
+       alignItems: 'center',
+       marginRight: 8,
+       backgroundColor: 'rgba(255,255,255,0.15)',
+       borderRadius: 22,
+       zIndex: 999,
+     },
+  imagePreviewContainer: {
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  imagePreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    marginLeft: 10,
   },
   emptyState: {
     alignItems: 'center',
@@ -785,9 +857,11 @@ const styles = StyleSheet.create({
   // Input Area
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    minHeight: 60,
   },
   textInput: {
     flex: 1,
@@ -798,7 +872,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     maxHeight: 120,
-    marginLeft: Spacing.sm,
+    marginHorizontal: Spacing.sm,
     textAlign: 'right',
   },
   sendButton: {

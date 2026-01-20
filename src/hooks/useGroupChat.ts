@@ -7,6 +7,7 @@ export interface ChatMessage {
   group_id: string;
   user_id: string;
   content: string;
+  image_url?: string | null;
   created_at: string;
   user?: {
     email: string;
@@ -30,13 +31,13 @@ interface UseGroupChatReturn {
   messages: ChatMessage[];
   loading: boolean;
   error: string | null;
-  sendMessage: (content: string, replyToMessageId?: string | null) => Promise<boolean>;
+  sendMessage: (content: string, image?: any, replyToMessageId?: string | null) => Promise<boolean>;
   toggleLike: (messageId: string) => Promise<void>;
   loadMoreMessages: () => Promise<void>;
   hasMore: boolean;
 }
 
-const MESSAGES_PER_PAGE = 50;
+const MESSAGES_PER_PAGE = 20;
 
 export const useGroupChat = (groupId: string | null, userId: string): UseGroupChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -53,18 +54,22 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
     setError(null);
 
     try {
+      // جلب آخر 20 رسالة (ترتيب تنازلي أولاً للحصول على الأحدث)
       const { data: messagesData, error: messagesError } = await (supabase as any)
         .from('group_messages')
         .select('*')
         .eq('group_id', groupId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(MESSAGES_PER_PAGE);
 
       if (messagesError) throw messagesError;
 
       if (messagesData && messagesData.length > 0) {
+        // نترك الرسائل بترتيب تنازلي (الأحدث أولاً) لتسهيل استخدام inverted FlatList
+        const sortedMessages = messagesData;
+
         // جلب معلومات المستخدمين
-        const userIds = [...new Set(messagesData.map((m: any) => m.user_id))];
+        const userIds = [...new Set(sortedMessages.map((m: any) => m.user_id))];
         const { data: usersData } = await supabase
           .from('users')
           .select('id, email, full_name, avatar_url')
@@ -73,7 +78,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         const usersMap = new Map((usersData as any)?.map((u: any) => [u.id, u]) || []);
 
         // جلب الرسائل المردود عليها
-        const replyIds = messagesData
+        const replyIds = sortedMessages
           .filter((m: any) => m.reply_to_message_id)
           .map((m: any) => m.reply_to_message_id);
 
@@ -101,7 +106,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
           }
         }
 
-        const messagesWithUsers: ChatMessage[] = messagesData.map((msg: any) => ({
+        const messagesWithUsers: ChatMessage[] = sortedMessages.map((msg: any) => ({
           ...msg,
           user: usersMap.get(msg.user_id) || { email: '', full_name: null, avatar_url: null },
           likes: msg.likes || [],
@@ -126,7 +131,8 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
   const loadMoreMessages = useCallback(async () => {
     if (!groupId || !hasMore || loading || messages.length === 0) return;
 
-    const oldestMessage = messages[0];
+    // آخر رسالة في المصفوفة هي الأقدم حالياً
+    const oldestMessage = messages[messages.length - 1];
 
     try {
       const { data: moreMessages, error: moreError } = await (supabase as any)
@@ -154,7 +160,8 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
           likes: msg.likes || []
         }));
 
-        setMessages(prev => [...messagesWithUsers.reverse(), ...prev]);
+        // إضافة الرسائل القديمة إلى نهاية المصفوفة
+        setMessages(prev => [...prev, ...messagesWithUsers]);
         setHasMore(moreMessages.length === MESSAGES_PER_PAGE);
       } else {
         setHasMore(false);
@@ -165,14 +172,43 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
   }, [groupId, hasMore, loading, messages]);
 
   // إرسال رسالة جديدة
-  const sendMessage = useCallback(async (content: string, replyToMessageId?: string | null): Promise<boolean> => {
-    if (!groupId || !userId || !content.trim()) return false;
+  const sendMessage = useCallback(async (content: string, image?: any, replyToMessageId?: string | null): Promise<boolean> => {
+    if (!groupId || !userId || (!content.trim() && !image)) return false;
 
     try {
+      let imageUrl = null;
+
+      // رفع الصورة إذا وجدت
+      if (image) {
+        const fileExt = image.uri.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${groupId}/${userId}/${Date.now()}_${fileName}`;
+
+        const formData = new FormData();
+        formData.append('file', {
+          uri: image.uri,
+          type: image.type || 'image/jpeg',
+          name: fileName,
+        } as any);
+
+        const { error: uploadError } = await supabase.storage
+          .from('chat-images')
+          .upload(filePath, formData);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-images')
+          .getPublicUrl(filePath);
+
+        imageUrl = publicUrl;
+      }
+
       const insertData: any = {
         group_id: groupId,
         user_id: userId,
-        content: content.trim()
+        content: content.trim(),
+        image_url: imageUrl
       };
 
       // إضافة معرف الرسالة المردود عليها إن وجد
@@ -205,13 +241,20 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
 
       const groupName = (groupData as any)?.name || 'المجموعة';
 
+      let notificationBody = `${senderName}: ${content.trim().substring(0, 50)}${content.length > 50 ? '...' : ''}`;
+      if (imageUrl && !content.trim()) {
+        notificationBody = `${senderName}: 📷 أرسل صورة`;
+      } else if (imageUrl && content.trim()) {
+        notificationBody = `${senderName}: 📷 ${content.trim().substring(0, 40)}...`;
+      }
+
       await NotificationsService.notifyGroupMembers(
         groupId,
         userId,
         senderName,
         'new_message',
         `💬 رسالة جديدة في ${groupName}`,
-        `${senderName}: ${content.trim().substring(0, 50)}${content.length > 50 ? '...' : ''}`,
+        notificationBody,
         { messageId: messageData?.id }
       );
 
@@ -305,7 +348,8 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
             replied_message: repliedMessageData
           };
 
-          setMessages(prev => [...prev, messageWithUser]);
+          // إضافة الرسالة الجديدة إلى بداية المصفوفة (لأننا نستخدم inverted FlatList)
+          setMessages(prev => [messageWithUser, ...prev]);
         }
       )
       .on(
