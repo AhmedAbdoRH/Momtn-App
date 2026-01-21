@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../components/auth/AuthProvider';
 
@@ -25,20 +25,25 @@ const AppNavigator: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={{ 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        backgroundColor: '#14090e' 
+      <View style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#14090e'
       }}>
         <ActivityIndicator size="large" color="#ea384c" />
+        <Text style={{
+          color: 'rgba(255, 255, 255, 0.4)',
+          marginTop: 20,
+          fontSize: 12
+        }}>V 1.1.2</Text>
       </View>
     );
   }
 
   return (
-    <Stack.Navigator 
-      screenOptions={{ 
+    <Stack.Navigator
+      screenOptions={{
         headerShown: false,
         gestureEnabled: true,
         cardStyleInterpolator: ({ current, layouts }) => {
@@ -60,70 +65,70 @@ const AppNavigator: React.FC = () => {
       {user ? (
         // المستخدم مسجل الدخول - عرض الشاشات الرئيسية
         <React.Fragment>
-          <Stack.Screen 
-            name="Main" 
-            component={HomeScreen} 
+          <Stack.Screen
+            name="Main"
+            component={HomeScreen}
             options={{ title: 'الرئيسية' }}
           />
-          <Stack.Screen 
-            name="Settings" 
-            component={SettingsScreen} 
+          <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
             options={{ title: 'الإعدادات' }}
           />
-          <Stack.Screen 
-            name="Profile" 
-            component={ProfileScreen} 
+          <Stack.Screen
+            name="Profile"
+            component={ProfileScreen}
             options={{ title: 'الملف الشخصي' }}
           />
-          <Stack.Screen 
-            name="Appearance" 
-            component={AppearanceScreen} 
+          <Stack.Screen
+            name="Appearance"
+            component={AppearanceScreen}
             options={{ title: 'المظهر' }}
           />
-          <Stack.Screen 
-            name="Notifications" 
-            component={NotificationsScreen} 
+          <Stack.Screen
+            name="Notifications"
+            component={NotificationsScreen}
             options={{ title: 'الإشعارات' }}
           />
-          <Stack.Screen 
-            name="Privacy" 
-            component={PrivacyScreen} 
+          <Stack.Screen
+            name="Privacy"
+            component={PrivacyScreen}
             options={{ title: 'الخصوصية' }}
           />
-          <Stack.Screen 
-            name="GroupsManagement" 
-            component={GroupsManagementScreen} 
+          <Stack.Screen
+            name="GroupsManagement"
+            component={GroupsManagementScreen}
             options={{ title: 'المجموعات' }}
           />
-          <Stack.Screen 
-            name="About" 
-            component={AboutScreen} 
+          <Stack.Screen
+            name="About"
+            component={AboutScreen}
             options={{ title: 'حول التطبيق' }}
           />
-          <Stack.Screen 
-            name="NotificationsList" 
-            component={NotificationsListScreen} 
+          <Stack.Screen
+            name="NotificationsList"
+            component={NotificationsListScreen}
             options={{ title: 'الإشعارات' }}
           />
-          <Stack.Screen 
-            name="CreateNew" 
-            component={CreateNewScreen} 
-            options={{ 
+          <Stack.Screen
+            name="CreateNew"
+            component={CreateNewScreen}
+            options={{
               title: 'إضافة امتنان',
               presentation: 'modal',
             }}
           />
-          <Stack.Screen 
-            name="Contributors" 
-            component={ContributorsScreen} 
+          <Stack.Screen
+            name="Contributors"
+            component={ContributorsScreen}
             options={{ title: 'لائحة الشكر' }}
           />
         </React.Fragment>
       ) : (
         // المستخدم غير مسجل الدخول - عرض شاشة المصادقة
-        <Stack.Screen 
-          name="Auth" 
-          component={AuthScreen} 
+        <Stack.Screen
+          name="Auth"
+          component={AuthScreen}
           options={{ title: 'تسجيل الدخول' }}
         />
       )}

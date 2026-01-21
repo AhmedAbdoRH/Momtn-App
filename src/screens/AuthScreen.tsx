@@ -99,6 +99,7 @@ const AuthScreen: React.FC = () => {
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>بالمتابعة، أنت توافق على شروط الاستخدام</Text>
+              <Text style={[styles.footerText, { marginTop: 8, opacity: 0.6 }]}>V 1.1.2</Text>
             </View>
           </View>
         </ScrollView>

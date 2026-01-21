@@ -102,6 +102,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     const result = await launchImageLibrary({
       mediaType: 'photo',
       quality: 0.7,
+      includeBase64: true,
     });
 
     if (result.assets && result.assets.length > 0) {
@@ -210,7 +211,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 
             <Swipeable
               ref={(ref) => {
-                if (ref && !item.swipeableRef) {
+                if (ref && !(item as any).swipeableRef) {
                   (item as any).swipeableRef = ref;
                 }
               }}
@@ -552,15 +553,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   imagePickerButton: {
-       width: 44,
-       height: 44,
-       justifyContent: 'center',
-       alignItems: 'center',
-       marginRight: 8,
-       backgroundColor: 'rgba(255,255,255,0.15)',
-       borderRadius: 22,
-       zIndex: 999,
-     },
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 22,
+    zIndex: 999,
+  },
   imagePreviewContainer: {
     padding: 10,
     flexDirection: 'row',

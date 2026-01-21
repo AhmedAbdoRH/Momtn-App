@@ -208,7 +208,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     <View style={styles.tabContent}>
       <View style={styles.aboutHeader}>
         <Text style={styles.appName}>ممتن Momtn</Text>
-        <Text style={styles.appVersion}>الإصدار 1.1.1</Text>
+        <Text style={styles.appVersion}>الإصدار 1.1.2</Text>
       </View>
 
       <Text style={styles.aboutDescription}>

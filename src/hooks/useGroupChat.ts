@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { NotificationsService } from '../services/notifications';
+import { decode } from 'base64-arraybuffer';
 
 export interface ChatMessage {
   id: string;
@@ -179,21 +180,16 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
       let imageUrl = null;
 
       // رفع الصورة إذا وجدت
-      if (image) {
+      if (image && image.base64) {
         const fileExt = image.uri.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${groupId}/${userId}/${Date.now()}_${fileName}`;
 
-        const formData = new FormData();
-        formData.append('file', {
-          uri: image.uri,
-          type: image.type || 'image/jpeg',
-          name: fileName,
-        } as any);
-
         const { error: uploadError } = await supabase.storage
           .from('chat-images')
-          .upload(filePath, formData);
+          .upload(filePath, decode(image.base64), {
+            contentType: image.type || 'image/jpeg',
+          });
 
         if (uploadError) throw uploadError;
 
@@ -202,6 +198,9 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
           .getPublicUrl(filePath);
 
         imageUrl = publicUrl;
+      } else if (image && !image.base64) {
+        // Fallback if base64 is missing (shouldn't happen with updated picker)
+        throw new Error('فشل معالجة الصورة: لم يتم العثور على بيانات base64');
       }
 
       const insertData: any = {

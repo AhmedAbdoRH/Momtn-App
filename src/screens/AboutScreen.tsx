@@ -50,7 +50,7 @@ const AboutScreen: React.FC = () => {
                 />
               </View>
               <Text style={styles.appName}>ممتن</Text>
-              <Text style={styles.appVersion}>الإصدار 1.0.0</Text>
+              <Text style={styles.appVersion}>الإصدار 1.1.2</Text>
               <Text style={styles.appDescription}>
                 تطبيق لتوثيق لحظات الامتنان والنعم الجميلة في حياتك ومشاركتها مع من تحب
               </Text>

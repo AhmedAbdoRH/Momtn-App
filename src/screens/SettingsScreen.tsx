@@ -257,7 +257,7 @@ const SettingsScreen: React.FC = () => {
             </TouchableOpacity>
 
             <View style={styles.footer}>
-              <Text style={styles.versionText}>الإصدار 1.0.0</Text>
+              <Text style={styles.versionText}>الإصدار 1.1.2</Text>
             </View>
           </ScrollView>
         </SafeAreaView>
