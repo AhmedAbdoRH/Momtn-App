@@ -169,6 +169,9 @@ export type Database = {
           group_id: string
           user_id: string
           content: string
+          image_url: string | null
+          likes: string[] | null
+          reply_to_message_id: string | null
           created_at: string
         }
         Insert: {
@@ -176,6 +179,9 @@ export type Database = {
           group_id: string
           user_id: string
           content: string
+          image_url?: string | null
+          likes?: string[] | null
+          reply_to_message_id?: string | null
           created_at?: string
         }
         Update: {
@@ -183,6 +189,9 @@ export type Database = {
           group_id?: string
           user_id?: string
           content?: string
+          image_url?: string | null
+          likes?: string[] | null
+          reply_to_message_id?: string | null
           created_at?: string
         }
         Relationships: [

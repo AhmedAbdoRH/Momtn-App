@@ -804,6 +804,7 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
           />
         </View>
       ))}
+      <View style={{ height: 20 }} />
     </Animated.View>
   );
 
@@ -903,7 +904,7 @@ const styles = StyleSheet.create({
   // Photos Container
   photosContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   // Empty State
   emptyState: {

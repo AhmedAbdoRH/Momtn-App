@@ -405,8 +405,12 @@ export class GroupsService {
         throw new Error('معرف المجموعة مطلوب');
       }
 
-      if (!photoData || (!photoData.caption && !photoData.content)) {
-        throw new Error('الوصف (caption) مطلوب');
+      // التحقق من وجود محتوى (إما صورة أو نص)
+      const hasImage = photoData?.image_url && photoData.image_url.trim() !== '';
+      const hasContent = (photoData?.caption?.trim() || photoData?.content?.trim() || '') !== '';
+
+      if (!hasImage && !hasContent) {
+        throw new Error('يرجى كتابة نص أو اختيار صورة');
       }
 
       // الحصول على المستخدم الحالي
@@ -495,8 +499,12 @@ export class GroupsService {
   // إضافة صورة شخصية (ليست في مجموعة)
   static async addPersonalPhoto(photoData: any): Promise<any> {
     try {
-      if (!photoData || (!photoData.caption && !photoData.content)) {
-        throw new Error('الوصف (caption) مطلوب');
+      // التحقق من وجود محتوى (إما صورة أو نص)
+      const hasImage = photoData?.image_url && photoData.image_url.trim() !== '';
+      const hasContent = (photoData?.caption?.trim() || photoData?.content?.trim() || '') !== '';
+
+      if (!hasImage && !hasContent) {
+        throw new Error('يرجى كتابة نص أو اختيار صورة');
       }
 
       // الحصول على المستخدم الحالي

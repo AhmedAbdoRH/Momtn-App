@@ -67,7 +67,9 @@ const ProfileScreen: React.FC = () => {
     try {
       const result = await launchImageLibrary({
         mediaType: 'photo',
-        quality: 0.5,
+        quality: 0.4, // جودة أقل لصور الملف الشخصي لأنها تظهر بحجم صغير (0.5 إلى 0.4)
+        maxWidth: 512, // تحديد أبعاد صغيرة لصور البروفايل لتوفير مساحة كبيرة
+        maxHeight: 512,
         includeBase64: true,
       });
 

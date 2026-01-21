@@ -15,12 +15,14 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import ImagePicker from 'react-native-image-crop-picker';
 import { supabase } from '../src/services/supabase';
 import { useAuth } from '../src/components/auth/AuthProvider';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import RNFS from 'react-native-fs';
 import { decode as decodeBase64 } from 'base64-arraybuffer';
+import { useToast } from '../src/providers/ToastProvider';
 
 interface CreateNewDialogProps {
   visible: boolean;
@@ -36,6 +38,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
   selectedGroupId,
 }) => {
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   // Content type
   const [contentType, setContentType] = useState<'image' | 'text'>('image');
@@ -111,9 +114,9 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
   const pickImage = async (useCamera: boolean = false) => {
     const options: any = {
       mediaType: 'photo',
-      quality: 0.9,
-      maxWidth: 1920,
-      maxHeight: 1920,
+      quality: 0.6, // تقليل الجودة من 0.9 إلى 0.6 لتوفير مساحة في قاعدة البيانات
+      maxWidth: 1200, // تقليل الأبعاد القصوى من 1920 إلى 1200
+      maxHeight: 1200,
     };
 
     try {
@@ -129,7 +132,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('خطأ', 'حدث خطأ أثناء اختيار الصورة');
+      showToast({ message: 'حدث خطأ أثناء اختيار الصورة', type: 'error' });
     }
   };
 
@@ -152,6 +155,38 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
     setRotation((prev) => (prev + 90) % 360);
   };
 
+  // Crop image
+  const handleCrop = async () => {
+    if (!imageUri) return;
+
+    try {
+      const croppedImage = await ImagePicker.openCropper({
+        path: imageUri,
+        width: 1200,
+        height: 1200,
+        cropping: true,
+        freeStyleCropEnabled: true,
+        mediaType: 'photo',
+        compressImageQuality: 0.6,
+      });
+
+      if (croppedImage) {
+        setImageUri(croppedImage.path);
+        setImageFile({
+          uri: croppedImage.path,
+          fileName: croppedImage.path.split('/').pop(),
+          type: croppedImage.mime,
+        });
+        setRotation(0);
+      }
+    } catch (error: any) {
+      if (error.message !== 'User cancelled image selection') {
+        console.error('Error cropping image:', error);
+        showToast({ message: 'حدث خطأ أثناء قص الصورة', type: 'error' });
+      }
+    }
+  };
+
   // Album selection
   const toggleAlbum = (album: string) => {
     setSelectedAlbums((prev) => {
@@ -169,7 +204,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
   const addNewAlbum = () => {
     const name = newAlbumName.trim();
     if (!name) {
-      Alert.alert('خطأ', 'يرجى إدخال اسم الألبوم');
+      showToast({ message: 'يرجى إدخال اسم الألبوم', type: 'error' });
       return;
     }
 
@@ -250,11 +285,12 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
 
       // إذا كان من نوع نص، نرسل سلسلة فارغة للصورة لتجنب قيود قاعدة البيانات
       onSubmit(content, contentType === 'text' ? '' : uploadedImageUrl, hashtags);
+      showToast({ message: 'تم نشر الصورة بنجاح', type: 'success' });
       resetForm();
       onClose();
     } catch (error) {
       console.error('Error submitting:', error);
-      Alert.alert('خطأ', 'حدث خطأ أثناء الحفظ');
+      showToast({ message: 'حدث خطأ أثناء الحفظ', type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -352,6 +388,9 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
                           />
                           {/* Edit buttons */}
                           <View style={styles.imageEditButtons}>
+                            <TouchableOpacity style={styles.editButton} onPress={handleCrop}>
+                              <Icon name="crop-outline" size={18} color="#fff" />
+                            </TouchableOpacity>
                             <TouchableOpacity style={styles.editButton} onPress={handleRotate}>
                               <Icon name="refresh-outline" size={18} color="#fff" />
                             </TouchableOpacity>
@@ -380,10 +419,10 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
                     {/* Caption Input */}
                     {imageUri && (
                       <View style={styles.captionSection}>
-                        <Text style={styles.inputLabel}>تعليق على الصورة (اختياري)</Text>
+                        <Text style={styles.inputLabel}>وصف الصورة (اختياري)</Text>
                         <TextInput
                           style={styles.captionInput}
-                          placeholder="اكتب تعليقاً يصف الصورة..."
+                          placeholder="اكتب وصفاً للصورة..."
                           placeholderTextColor="rgba(255,255,255,0.4)"
                           value={caption}
                           onChangeText={setCaption}

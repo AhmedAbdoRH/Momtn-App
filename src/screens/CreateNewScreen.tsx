@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import ImagePicker from 'react-native-image-crop-picker';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useToast } from '../providers/ToastProvider';
@@ -97,9 +98,9 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
   const pickImage = async (useCamera: boolean = false) => {
     const options: any = {
       mediaType: 'photo',
-      quality: 0.9,
-      maxWidth: 1920,
-      maxHeight: 1920,
+      quality: 0.6, // تقليل الجودة من 0.9 إلى 0.6 لتوفير المساحة
+      maxWidth: 1200, // تقليل الأبعاد من 1920 إلى 1200
+      maxHeight: 1200,
     };
 
     try {
@@ -136,6 +137,38 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
   // Rotate image
   const handleRotate = () => {
     setRotation((prev) => (prev + 90) % 360);
+  };
+
+  // Crop image
+  const handleCrop = async () => {
+    if (!imageUri) return;
+
+    try {
+      const croppedImage = await ImagePicker.openCropper({
+        path: imageUri,
+        width: 1200,
+        height: 1200,
+        cropping: true,
+        freeStyleCropEnabled: true,
+        mediaType: 'photo',
+        compressImageQuality: 0.6,
+      });
+
+      if (croppedImage) {
+        setImageUri(croppedImage.path);
+        setImageFile({
+          uri: croppedImage.path,
+          fileName: croppedImage.path.split('/').pop(),
+          type: croppedImage.mime,
+        });
+        setRotation(0);
+      }
+    } catch (error: any) {
+      if (error.message !== 'User cancelled image selection') {
+        console.error('Error cropping image:', error);
+        showToast({ message: 'حدث خطأ أثناء قص الصورة', type: 'error' });
+      }
+    }
   };
 
   // Album selection
@@ -244,7 +277,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
       if (insertError) throw insertError;
 
       showToast({
-        message: selectedGroupId ? 'تم إضافة الصورة إلى المجموعة' : 'تم إضافة الصورة بنجاح',
+        message: 'تم نشر الصورة بنجاح',
         type: 'success'
       });
       onPhotoAdded?.();
@@ -332,6 +365,9 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
                       />
                       {/* Edit buttons */}
                       <View style={styles.imageEditButtons}>
+                        <TouchableOpacity style={styles.editButton} onPress={handleCrop}>
+                          <Icon name="crop-outline" size={18} color="#fff" />
+                        </TouchableOpacity>
                         <TouchableOpacity style={styles.editButton} onPress={handleRotate}>
                           <Icon name="refresh-outline" size={18} color="#fff" />
                         </TouchableOpacity>
@@ -351,10 +387,10 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
                 {/* Caption Input */}
                 {imageUri && (
                   <View style={styles.captionSection}>
-                    <Text style={styles.inputLabel}>تعليق على الصورة (اختياري)</Text>
+                    <Text style={styles.inputLabel}>وصف الصورة (اختياري)</Text>
                     <TextInput
                       style={styles.captionInput}
-                      placeholder="اكتب تعليقاً يصف الصورة..."
+                      placeholder="اكتب وصفاً للصورة..."
                       placeholderTextColor="rgba(255,255,255,0.4)"
                       value={caption}
                       onChangeText={setCaption}

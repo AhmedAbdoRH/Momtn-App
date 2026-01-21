@@ -8,15 +8,15 @@ export interface ChatMessage {
   group_id: string;
   user_id: string;
   content: string;
-  image_url?: string | null;
+  image_url: string | null;
+  likes: string[] | null;
+  reply_to_message_id: string | null;
   created_at: string;
   user?: {
     email: string;
     full_name: string | null;
     avatar_url?: string | null;
   };
-  likes?: string[];
-  reply_to_message_id?: string | null;
   replied_message?: {
     id: string;
     content: string;
@@ -56,7 +56,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
 
     try {
       // جلب آخر 20 رسالة (ترتيب تنازلي أولاً للحصول على الأحدث)
-      const { data: messagesData, error: messagesError } = await (supabase as any)
+      const { data: messagesData, error: messagesError } = await supabase
         .from('group_messages')
         .select('*')
         .eq('group_id', groupId)
@@ -85,7 +85,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
 
         let repliedMessagesMap = new Map();
         if (replyIds.length > 0) {
-          const { data: repliedMessages } = await (supabase as any)
+          const { data: repliedMessages } = await supabase
             .from('group_messages')
             .select('id, content, user_id')
             .in('id', replyIds);
@@ -136,7 +136,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
     const oldestMessage = messages[messages.length - 1];
 
     try {
-      const { data: moreMessages, error: moreError } = await (supabase as any)
+      const { data: moreMessages, error: moreError } = await supabase
         .from('group_messages')
         .select('*')
         .eq('group_id', groupId)
@@ -187,27 +187,35 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         const filePath = `${groupId}/${userId}/${Date.now()}_${fileName}`;
 
         if (image.base64) {
-          const { error } = await supabase.storage
-            .from('chat-images')
-            .upload(filePath, decode(image.base64), {
-              contentType: image.type || 'image/jpeg',
-            });
-          uploadError = error;
-        } else {
-          // محاولة الرفع باستخدام URI إذا لم يتوفر base64 (متوافق مع بعض البيئات)
-          const formData = new FormData();
-          formData.append('file', {
-            uri: image.uri,
-            name: fileName,
-            type: image.type || 'image/jpeg',
-          } as any);
+          // تنظيف بيانات base64 من أي بادئة (prefix) إذا وجدت
+          const base64Data = image.base64.includes('base64,') 
+            ? image.base64.split('base64,')[1] 
+            : image.base64;
 
           const { error } = await supabase.storage
             .from('chat-images')
-            .upload(filePath, formData as any, {
+            .upload(filePath, decode(base64Data), {
               contentType: image.type || 'image/jpeg',
+              upsert: true
             });
           uploadError = error;
+        } else {
+          // محاولة الرفع باستخدام fetch للحصول على blob (أكثر استقراراً في React Native)
+          try {
+            const response = await fetch(image.uri);
+            const blob = await response.blob();
+            
+            const { error } = await supabase.storage
+              .from('chat-images')
+              .upload(filePath, blob, {
+                contentType: image.type || 'image/jpeg',
+                upsert: true
+              });
+            uploadError = error;
+          } catch (fetchErr) {
+            console.error('Error fetching image blob:', fetchErr);
+            uploadError = fetchErr;
+          }
         }
 
         if (uploadError) throw uploadError;
@@ -231,7 +239,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         insertData.reply_to_message_id = replyToMessageId;
       }
 
-      const { data: messageData, error: sendError } = await (supabase as any)
+      const { data: messageData, error: sendError } = await supabase
         .from('group_messages')
         .insert(insertData)
         .select()
@@ -295,7 +303,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         ? currentLikes.filter(id => id !== userId)
         : [...currentLikes, userId];
 
-      const { error: updateError } = await (supabase as any)
+      const { error: updateError } = await supabase
         .from('group_messages')
         .update({ likes: newLikes })
         .eq('id', messageId);
@@ -336,7 +344,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
           // جلب بيانات الرسالة المردود عليها إذا وجدت
           let repliedMessageData = null;
           if (newMessage.reply_to_message_id) {
-            const { data: repliedMsg } = await (supabase as any)
+            const { data: repliedMsg } = await supabase
               .from('group_messages')
               .select('id, content, user_id')
               .eq('id', newMessage.reply_to_message_id)

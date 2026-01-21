@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import { supabase } from '../src/services/supabase';
 import { Spacing, BorderRadius } from '../theme';
 import { useToast } from '../src/providers/ToastProvider';
 
@@ -112,7 +113,12 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
   const [showComments, setShowComments] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [isEditingAlbumsOnly, setIsEditingAlbumsOnly] = useState(false);
   const [caption, setCaption] = useState(photo.caption || photo.content || '');
+  const [selectedAlbums, setSelectedAlbums] = useState<Set<string>>(new Set(photo.hashtags || []));
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showAlbumInput, setShowAlbumInput] = useState(false);
+  const [newAlbumName, setNewAlbumName] = useState('');
   const hashtags = photo.hashtags || [];
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<Comment[]>(photo.comments || []);
@@ -121,6 +127,8 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
   const [replyToAuthorName, setReplyToAuthorName] = useState<string | null>(null);
   const [imageHeight, setImageHeight] = useState(200);
   const commentsScrollRef = useRef<ScrollView | null>(null);
+  const editModalScrollRef = useRef<ScrollView | null>(null);
+  const albumSectionY = useRef<number>(0);
   const commentLayoutPositions = useRef<Record<string, number>>({});
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
   const [highlightedReplyId, setHighlightedReplyId] = useState<string | null>(null);
@@ -162,6 +170,88 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
       setShowComments(true);
     }
   }, [autoOpenComments, comments.length]);
+
+  // Fetch album suggestions
+  const fetchAlbumSuggestions = async () => {
+    if (!currentUserId) return;
+
+    try {
+      let query = supabase.from('photos').select('hashtags');
+
+      if (photo.group_id) {
+        query = query.eq('group_id', photo.group_id);
+      } else {
+        query = query.eq('user_id', currentUserId).is('group_id', null);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const tags = new Set<string>();
+      data?.forEach((p: any) => {
+        if (p.hashtags && Array.isArray(p.hashtags)) {
+          p.hashtags.forEach((tag: string) => {
+            if (tag?.trim()) tags.add(tag.trim());
+          });
+        }
+      });
+
+      setSuggestions(Array.from(tags).sort((a, b) => a.localeCompare(b)));
+    } catch (error) {
+      console.error('Error fetching albums:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (showEditModal) {
+      setCaption(photo.caption || photo.content || '');
+      setSelectedAlbums(new Set(photo.hashtags || []));
+      fetchAlbumSuggestions();
+      
+      // If we are specifically editing albums, scroll to that section
+      if (isEditingAlbumsOnly) {
+        setTimeout(() => {
+          if (editModalScrollRef.current && albumSectionY.current > 0) {
+            editModalScrollRef.current.scrollTo({
+              y: albumSectionY.current,
+              animated: true
+            });
+          }
+        }, 500); // Small delay to allow layout
+      }
+    } else {
+      // Reset flags when modal closes
+      setIsEditingAlbumsOnly(false);
+    }
+  }, [showEditModal]);
+
+  // Album selection helpers
+  const toggleAlbum = (album: string) => {
+    setSelectedAlbums((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(album)) {
+        newSet.delete(album);
+      } else {
+        newSet.add(album);
+      }
+      return newSet;
+    });
+  };
+
+  const addNewAlbum = () => {
+    const name = newAlbumName.trim();
+    if (!name) {
+      showToast({ message: 'يرجى إدخال اسم الألبوم', type: 'error' });
+      return;
+    }
+
+    setSelectedAlbums((prev) => new Set(prev).add(name));
+    if (!suggestions.includes(name)) {
+      setSuggestions((prev) => [...prev, name].sort((a, b) => a.localeCompare(b)));
+    }
+    setNewAlbumName('');
+    setShowAlbumInput(false);
+  };
 
   // Handle like with animation
   const handleLike = () => {
@@ -241,11 +331,11 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
   // Handle update caption
   const handleUpdateCaption = async () => {
     try {
-      await onUpdateCaption?.(caption, hashtags);
+      await onUpdateCaption?.(caption, Array.from(selectedAlbums));
       setShowEditModal(false);
-      showToast({ message: 'تم تحديث الوصف بنجاح', type: 'success' });
+      showToast({ message: 'تم التحديث بنجاح', type: 'success' });
     } catch (error: any) {
-      showToast({ message: 'فشل تحديث الوصف: ' + error.message, type: 'error' });
+      showToast({ message: 'فشل التحديث: ' + error.message, type: 'error' });
     }
   };
 
@@ -708,9 +798,9 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
               }}
             >
               <Icon name="create-outline" size={20} color="#fff" />
-              <Text style={styles.optionText}>تعديل الوصف</Text>
+              <Text style={styles.optionText}>تعديل المنشور</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[styles.optionItem, styles.deleteOption]}
               onPress={() => {
@@ -742,22 +832,97 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
         <View style={styles.editModalOverlay}>
           <View style={styles.editModalContent}>
             <View style={styles.editModalHeader}>
-              <Text style={styles.editModalTitle}>تعديل الوصف</Text>
+              <Text style={styles.editModalTitle}>تعديل المنشور</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
                 <Icon name="close" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
             
-            <TextInput
-              style={styles.editCaptionInput}
-              placeholder="أضف وصفاً..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={caption}
-              onChangeText={setCaption}
-              textAlign="right"
-              multiline
-              numberOfLines={4}
-            />
+            <ScrollView 
+              ref={editModalScrollRef}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.inputLabel}>الوصف</Text>
+              <TextInput
+                style={styles.editCaptionInput}
+                placeholder="أضف وصفاً..."
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={caption}
+                onChangeText={setCaption}
+                textAlign="right"
+                multiline
+                numberOfLines={4}
+              />
+              
+              <View 
+                style={styles.editAlbumsSection}
+                onLayout={(event) => {
+                  albumSectionY.current = event.nativeEvent.layout.y;
+                }}
+              >
+                <Text style={styles.sectionTitle}>الألبومات</Text>
+                
+                <View style={styles.albumChips}>
+                  {suggestions.map((album) => (
+                    <TouchableOpacity
+                      key={album}
+                      style={[
+                        styles.albumChip,
+                        selectedAlbums.has(album) && styles.albumChipSelected,
+                      ]}
+                      onPress={() => toggleAlbum(album)}
+                    >
+                      <Text style={[
+                        styles.albumChipText,
+                        selectedAlbums.has(album) && styles.albumChipTextSelected
+                      ]}>
+                        {album}
+                      </Text>
+                      {selectedAlbums.has(album) && (
+                        <Icon name="checkmark-circle" size={14} color="#818cf8" style={{ marginLeft: 4 }} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                  
+                  {!showAlbumInput ? (
+                    <TouchableOpacity
+                      style={styles.addAlbumButton}
+                      onPress={() => setShowAlbumInput(true)}
+                    >
+                      <Icon name="add-circle-outline" size={18} color="#ea384c" />
+                      <Text style={styles.addAlbumButtonText}>ألبوم جديد</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.newAlbumInputContainer}>
+                      <TextInput
+                        style={styles.newAlbumInput}
+                        placeholder="اسم الألبوم..."
+                        placeholderTextColor="rgba(255,255,255,0.4)"
+                        value={newAlbumName}
+                        onChangeText={setNewAlbumName}
+                        autoFocus
+                        textAlign="right"
+                      />
+                      <TouchableOpacity
+                        style={styles.confirmAlbumButton}
+                        onPress={addNewAlbum}
+                      >
+                        <Icon name="checkmark" size={20} color="#66bb6a" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.cancelAlbumButton}
+                        onPress={() => {
+                          setShowAlbumInput(false);
+                          setNewAlbumName('');
+                        }}
+                      >
+                        <Icon name="close" size={20} color="rgba(255,255,255,0.4)" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </ScrollView>
             
             <View style={styles.editModalButtons}>
               <TouchableOpacity
@@ -1271,6 +1436,93 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  inputLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+  editAlbumsSection: {
+    marginTop: 20,
+  },
+  sectionTitle: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: 'right',
+  },
+  albumChips: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    marginBottom: 12,
+  },
+  albumChip: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  albumChipSelected: {
+    backgroundColor: 'rgba(129, 140, 248, 0.2)',
+    borderColor: '#818cf8',
+  },
+  albumChipText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+  },
+  albumChipTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  addAlbumButton: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: 'rgba(234, 56, 76, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#ea384c',
+  },
+  addAlbumButtonText: {
+    color: '#ea384c',
+    fontSize: 13,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  newAlbumInputContainer: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
+    paddingLeft: 4,
+    paddingRight: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    height: 36,
+  },
+  newAlbumInput: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 13,
+    paddingVertical: 0,
+    height: '100%',
+  },
+  confirmAlbumButton: {
+    padding: 6,
+  },
+  cancelAlbumButton: {
+    padding: 6,
   },
 });
 

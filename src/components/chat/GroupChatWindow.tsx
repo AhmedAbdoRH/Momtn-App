@@ -11,12 +11,15 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Alert,
+  PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { launchImageLibrary } from 'react-native-image-picker';
+import RNFS from 'react-native-fs';
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../../../theme';
 import { useGroupChat, ChatMessage } from '../../hooks/useGroupChat';
 
@@ -39,6 +42,8 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
   const [sending, setSending] = useState(false);
   const [selectedImage, setSelectedImage] = useState<any>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const shouldScrollToEnd = useRef(true);
   const isFirstLoad = useRef(true);
@@ -101,7 +106,9 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
   const handlePickImage = async () => {
     const result = await launchImageLibrary({
       mediaType: 'photo',
-      quality: 0.7,
+      quality: 0.4, // جودة منخفضة للدردشة لتقليل الحجم جداً (من 0.5 إلى 0.4)
+      maxWidth: 800, // تقليل العرض الأقصى لصور الدردشة (من 1024 إلى 800)
+      maxHeight: 800, // تقليل الارتفاع الأقصى لصور الدردشة
       includeBase64: true,
     });
 
@@ -112,12 +119,15 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 
   // إرسال الرسالة
   const handleSend = async () => {
-    if ((!inputText.trim() && !selectedImage) || sending) return;
+    // إذا كان الحقل فارغاً ولا توجد صورة، نرسل قلباً
+    const messageToSend = inputText.trim() || (selectedImage ? '' : '❤️');
+    
+    if (!messageToSend && !selectedImage && !sending) return;
 
     setSending(true);
     try {
       const success = await sendMessage(
-        inputText.trim(),
+        messageToSend,
         selectedImage,
         replyingTo?.id
       );
@@ -164,6 +174,54 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     if (message.user?.full_name) return message.user.full_name;
     if (message.user?.email) return message.user.email.split('@')[0];
     return 'مستخدم';
+  };
+
+  // وظيفة تحميل الصورة
+  const handleDownloadImage = async (imageUrl: string) => {
+    if (downloading) return;
+
+    try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'صلاحية التخزين',
+            message: 'نحتاج لصلاحية التخزين لتحميل الصورة على هاتفك',
+            buttonNeutral: 'اسألني لاحقاً',
+            buttonNegative: 'إلغاء',
+            buttonPositive: 'موافق',
+          }
+        );
+        // في أندرويد 10 وما فوق، لا نحتاج دائماً لهذه الصلاحية للتحميل في المجلدات العامة
+        // ولكن للتبسيط سنكتفي بالتحقق أو المتابعة
+      }
+
+      setDownloading(true);
+      const fileName = `Momtn_${Date.now()}.jpg`;
+      const downloadPath = Platform.OS === 'ios' 
+        ? `${RNFS.DocumentDirectoryPath}/${fileName}`
+        : `${RNFS.ExternalStorageDirectoryPath}/Download/${fileName}`;
+
+      const downloadResult = await RNFS.downloadFile({
+        fromUrl: imageUrl,
+        toFile: downloadPath,
+      }).promise;
+
+      if (downloadResult.statusCode === 200) {
+        // إخبار النظام بوجود ملف جديد ليظهر في المعرض (أندرويد فقط)
+        if (Platform.OS === 'android') {
+          await RNFS.scanFile(downloadPath);
+        }
+        Alert.alert('تم التحميل', `تم حفظ الصورة في مجلد التحميلات`);
+      } else {
+        throw new Error('فشل التحميل من السيرفر');
+      }
+    } catch (err) {
+      console.error('Download error:', err);
+      Alert.alert('خطأ', 'فشل تحميل الصورة، يرجى المحاولة مرة أخرى');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
@@ -267,13 +325,25 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                 )}
 
                 {/* عرض الصورة إذا وجدت */}
-                {item.image_url && (
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={styles.messageImage}
-                    resizeMode="cover"
-                  />
-                )}
+                {item.image_url ? (
+                  <TouchableOpacity 
+                    activeOpacity={0.9} 
+                    onPress={() => {
+                      if (item.image_url) {
+                        setViewingImage(item.image_url);
+                      }
+                    }}
+                    style={styles.imageContainer}
+                  >
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={styles.messageImage}
+                      resizeMode="cover"
+                      onLoad={() => console.log('Image loaded successfully:', item.image_url)}
+                      onError={(e) => console.log('Image load error:', e.nativeEvent.error, item.image_url)}
+                    />
+                  </TouchableOpacity>
+                ) : null}
 
                 {item.content ? (
                   <Text style={[
@@ -444,26 +514,6 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 
               <View style={styles.inputContainer}>
                 <TouchableOpacity
-                  style={styles.imagePickerButton}
-                  onPress={handlePickImage}
-                  disabled={sending}
-                >
-                  <Icon name="image" size={26} color="#00E676" />
-                </TouchableOpacity>
-
-                <TextInput
-                  ref={inputRef}
-                  style={styles.textInput}
-                  value={inputText}
-                  onChangeText={setInputText}
-                  placeholder="اكتب رسالتك..."
-                  placeholderTextColor={Colors.textMuted}
-                  multiline
-                  maxLength={1000}
-                  textAlign="right"
-                />
-
-                <TouchableOpacity
                   style={[styles.sendButton, sending && styles.sendButtonDisabled]}
                   onPress={handleSend}
                   disabled={sending}
@@ -479,11 +529,71 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                     />
                   )}
                 </TouchableOpacity>
+
+                <TextInput
+                  ref={inputRef}
+                  style={styles.textInput}
+                  value={inputText}
+                  onChangeText={setInputText}
+                  placeholder="اكتب رسالتك..."
+                  placeholderTextColor={Colors.textMuted}
+                  multiline
+                  maxLength={1000}
+                  textAlign="right"
+                />
+
+                <TouchableOpacity
+                  style={styles.imagePickerButton}
+                  onPress={handlePickImage}
+                  disabled={sending}
+                >
+                  <Icon name="image" size={26} color="#00E676" />
+                </TouchableOpacity>
               </View>
             </View>
           </KeyboardAvoidingView>
         </SafeAreaView>
       </LinearGradient>
+
+      {/* مودال عرض الصورة بملء الشاشة */}
+      <Modal
+        visible={!!viewingImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setViewingImage(null)}
+      >
+        <View style={styles.fullScreenContainer}>
+          <TouchableOpacity 
+            style={styles.fullScreenClose} 
+            onPress={() => setViewingImage(null)}
+          >
+            <Icon name="close" size={30} color="#fff" />
+          </TouchableOpacity>
+
+          {viewingImage && (
+            <Image 
+              source={{ uri: viewingImage }} 
+              style={styles.fullScreenImage} 
+              resizeMode="contain"
+            />
+          )}
+
+          <TouchableOpacity 
+            style={styles.downloadButton} 
+            onPress={() => viewingImage && handleDownloadImage(viewingImage)}
+            disabled={downloading}
+          >
+            {downloading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Icon name="download-outline" size={24} color="#fff" />
+                <Text style={styles.downloadButtonText}>تحميل</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -549,8 +659,12 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 12,
-    marginBottom: 8,
     backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  imageContainer: {
+    marginBottom: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   imagePickerButton: {
     width: 44,
@@ -649,7 +763,7 @@ const styles = StyleSheet.create({
   },
 
   messageBubbleWrapper: {
-    maxWidth: '75%',
+    maxWidth: '80%',
     position: 'relative',
   },
   myMessageWrapper: {
@@ -657,6 +771,39 @@ const styles = StyleSheet.create({
   },
   otherMessageWrapper: {
     alignItems: 'flex-start',
+  },
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '80%',
+  },
+  fullScreenClose: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  downloadButton: {
+    position: 'absolute',
+    bottom: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+  },
+  downloadButtonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 
   senderName: {

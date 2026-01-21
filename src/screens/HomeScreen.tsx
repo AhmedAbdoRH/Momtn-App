@@ -445,10 +445,11 @@ const HomeScreen: React.FC = () => {
 
   const handleCreatePhoto = async (content: string, imageUri?: string, hashtags?: string[]) => {
     try {
-      if (!content || content.trim().length < 3) {
+      // التحقق من وجود محتوى (إما صورة أو نص)
+      if (!imageUri && !content.trim()) {
         setAlertDialogProps({
           title: 'خطأ',
-          message: 'محتوى الصورة يجب أن يكون 3 أحرف على الأقل',
+          message: 'يرجى كتابة نص الامتنان أو اختيار صورة',
           type: 'danger',
           onConfirm: () => setShowAlertDialog(false),
         });
@@ -461,40 +462,31 @@ const HomeScreen: React.FC = () => {
         content: content.trim(),
         caption: content.trim(),
         hashtags: hashtags || content.match(/#[ا-ياa-zA-Z0-9_]+/g)?.map(tag => tag.slice(1)) || [],
-        image_url: imageUri || null
+        image_url: imageUri && imageUri.trim() !== '' ? imageUri : null
       };
 
       if (activeTab === 'shared' && selectedGroup) {
         await GroupsService.addPhotoToGroup(selectedGroup.id, photoData);
-        setAlertDialogProps({
-          title: 'تم النشر!',
+        showToast({
           message: 'تم نشر الصورة في المجموعة بنجاح',
-          type: 'info',
-          onConfirm: () => setShowAlertDialog(false),
+          type: 'success',
         });
-        setShowAlertDialog(true);
       } else {
         await GroupsService.addPersonalPhoto(photoData);
-        setAlertDialogProps({
-          title: 'تم النشر!',
+        showToast({
           message: 'تم نشر الصورة الشخصية بنجاح',
-          type: 'info',
-          onConfirm: () => setShowAlertDialog(false),
+          type: 'success',
         });
-        setShowAlertDialog(true);
       }
 
       // Trigger PhotoGrid refresh
       setPhotosKey(prev => prev + 1);
     } catch (error: any) {
       console.error('Error creating photo:', error);
-      setAlertDialogProps({
-        title: 'خطأ',
+      showToast({
         message: error.message || 'حدث خطأ أثناء إنشاء الصورة',
-        type: 'danger',
-        onConfirm: () => setShowAlertDialog(false),
+        type: 'error',
       });
-      setShowAlertDialog(true);
     } finally {
       setIsLoading(false);
     }
@@ -571,13 +563,10 @@ const HomeScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('Error pasting from clipboard:', error);
-      setAlertDialogProps({
-        title: 'تنبيه',
+      showToast({
         message: 'يرجى الضغط مطولاً داخل الحقل لاختيار "لصق" (Paste)',
         type: 'info',
-        onConfirm: () => setShowAlertDialog(false),
       });
-      setShowAlertDialog(true);
     }
   };
 
@@ -803,6 +792,7 @@ const HomeScreen: React.FC = () => {
           <ScrollView
             ref={scrollViewRef}
             style={styles.mainScrollView}
+            contentContainerStyle={styles.mainScrollViewContent}
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.topBar}>
@@ -1321,6 +1311,9 @@ const styles = StyleSheet.create({
   },
   mainScrollView: {
     flex: 1,
+  },
+  mainScrollViewContent: {
+    paddingBottom: 80, // مساحة إضافية أسفل المحتوى
   },
   topBar: {
     flexDirection: 'row',
