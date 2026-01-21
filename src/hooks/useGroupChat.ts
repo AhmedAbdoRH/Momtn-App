@@ -180,16 +180,35 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
       let imageUrl = null;
 
       // رفع الصورة إذا وجدت
-      if (image && image.base64) {
+      if (image) {
+        let uploadError = null;
         const fileExt = image.uri.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${groupId}/${userId}/${Date.now()}_${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('chat-images')
-          .upload(filePath, decode(image.base64), {
-            contentType: image.type || 'image/jpeg',
-          });
+        if (image.base64) {
+          const { error } = await supabase.storage
+            .from('chat-images')
+            .upload(filePath, decode(image.base64), {
+              contentType: image.type || 'image/jpeg',
+            });
+          uploadError = error;
+        } else {
+          // محاولة الرفع باستخدام URI إذا لم يتوفر base64 (متوافق مع بعض البيئات)
+          const formData = new FormData();
+          formData.append('file', {
+            uri: image.uri,
+            name: fileName,
+            type: image.type || 'image/jpeg',
+          } as any);
+
+          const { error } = await supabase.storage
+            .from('chat-images')
+            .upload(filePath, formData as any, {
+              contentType: image.type || 'image/jpeg',
+            });
+          uploadError = error;
+        }
 
         if (uploadError) throw uploadError;
 
@@ -198,9 +217,6 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
           .getPublicUrl(filePath);
 
         imageUrl = publicUrl;
-      } else if (image && !image.base64) {
-        // Fallback if base64 is missing (shouldn't happen with updated picker)
-        throw new Error('فشل معالجة الصورة: لم يتم العثور على بيانات base64');
       }
 
       const insertData: any = {

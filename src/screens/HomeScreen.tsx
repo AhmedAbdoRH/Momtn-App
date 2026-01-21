@@ -799,9 +799,6 @@ const HomeScreen: React.FC = () => {
             </TouchableOpacity>
           )}
 
-          <View style={styles.footerVersionContainer}>
-            <Text style={styles.footerVersionText}>🚀 تحديث فوري - الإصدار 1.1.4 (أعلى الشاشة) - 21 يناير 2026 🚀</Text>
-          </View>
 
           <ScrollView
             ref={scrollViewRef}
@@ -1560,7 +1557,7 @@ const styles = StyleSheet.create({
   sidebarVersionText: {
     color: 'rgba(255, 255, 255, 0.3)',
     fontSize: 10,
-    marginTop: -30,
+    marginTop: 5, // Moved down from -30
     fontWeight: '500',
   },
   sidebarContent: {
@@ -2048,25 +2045,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     opacity: 0.75, // شفافية الزر
-  },
-  footerVersionContainer: {
-    position: 'absolute',
-    top: 0, // وضعه في أعلى الشاشة
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(234, 56, 76, 0.95)', // لون أحمر فاقع أكثر وضوحاً
-    paddingVertical: 6, // زيادة المساحة الرأسية قليلاً
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10000, // التأكد من أنه فوق كل العناصر بما في ذلك الهيدر
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  footerVersionText: {
-    color: '#FFFFFF',
-    fontSize: 11, // تصغير الخط قليلاً ليكون أنيقاً في الأعلى
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
   },
 });
 
