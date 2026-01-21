@@ -799,6 +799,10 @@ const HomeScreen: React.FC = () => {
             </TouchableOpacity>
           )}
 
+          <View style={styles.footerVersionContainer}>
+            <Text style={styles.footerVersionText}>🚀 تحديث فوري - الإصدار 1.1.4 (أعلى الشاشة) - 21 يناير 2026 🚀</Text>
+          </View>
+
           <ScrollView
             ref={scrollViewRef}
             style={styles.mainScrollView}
@@ -940,10 +944,6 @@ const HomeScreen: React.FC = () => {
               <Icon name="person-outline" size={24} color={activeTab === 'personal' ? '#FFFFFF' : 'rgba(255,255,255,0.5)'} />
               <Text style={[styles.navText, activeTab === 'personal' && styles.navTextActive]}>المساحة الشخصية</Text>
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.footerVersionContainer}>
-            <Text style={styles.footerVersionText}>🚀 تحديث فوري - الإصدار 1.1.3 - 21 يناير 2026 🚀</Text>
           </View>
 
           {/* Floating Chat Button - يظهر فقط في المساحات المشتركة */}
@@ -2051,22 +2051,22 @@ const styles = StyleSheet.create({
   },
   footerVersionContainer: {
     position: 'absolute',
-    bottom: 80, // فوق البار السفلي قليلاً
+    top: 0, // وضعه في أعلى الشاشة
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(234, 56, 76, 0.9)', // لون أحمر فاقع
-    paddingVertical: 4,
+    backgroundColor: 'rgba(234, 56, 76, 0.95)', // لون أحمر فاقع أكثر وضوحاً
+    paddingVertical: 6, // زيادة المساحة الرأسية قليلاً
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 9999,
+    zIndex: 10000, // التأكد من أنه فوق كل العناصر بما في ذلك الهيدر
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
   },
   footerVersionText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10
+    fontSize: 11, // تصغير الخط قليلاً ليكون أنيقاً في الأعلى
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
 });
 
