@@ -16,6 +16,7 @@ import {
   Animated,
   PanResponder,
   Image,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomAlertDialog from '../components/CustomAlertDialog';
@@ -179,6 +180,21 @@ const HomeScreen: React.FC = () => {
       console.error('Error loading welcome message:', error);
     }
   }, [user]);
+
+  const handleFeedback = () => {
+    const phoneNumber = '201008116452';
+    const message = 'السلام عليكم، أود تقديم ملاحظة بخصوص تطبيق ممتن:';
+    const url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
+    
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        const webUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+        Linking.openURL(webUrl);
+      }
+    });
+  };
 
   useEffect(() => {
     if (user?.id) {
@@ -798,7 +814,7 @@ const HomeScreen: React.FC = () => {
                     style={styles.sidebarSettingsMini}
                     onPress={() => {
                       toggleDrawer(false);
-                      navigation.navigate('Profile' as never);
+                      navigation.navigate('Settings' as never);
                     }}
                   >
                     <Icon name="settings-outline" size={16} color="rgba(255,255,255,0.7)" />
@@ -841,6 +857,14 @@ const HomeScreen: React.FC = () => {
 
 
 
+
+              <TouchableOpacity
+                style={styles.sidebarFeedbackButton}
+                onPress={handleFeedback}
+              >
+                <Icon name="chatbubble-ellipses-outline" size={22} color="#4ade80" />
+                <Text style={styles.sidebarFeedbackText}>تقديم ملاحظة للمطور</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.sidebarLogoutButton}
@@ -2076,6 +2100,22 @@ const styles = StyleSheet.create({
   sidebarItemText: {
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 16,
+    marginRight: 15,
+  },
+  sidebarFeedbackButton: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginTop: 20,
+    backgroundColor: 'rgba(74, 222, 128, 0.05)',
+    marginHorizontal: 10,
+    borderRadius: 12,
+  },
+  sidebarFeedbackText: {
+    color: '#4ade80',
+    fontSize: 16,
+    fontWeight: '600',
     marginRight: 15,
   },
   sidebarLogoutButton: {

@@ -12,6 +12,7 @@ import {
   Animated,
   Alert,
   ActivityIndicator,
+  Easing,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -134,8 +135,11 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
   const [highlightedReplyId, setHighlightedReplyId] = useState<string | null>(null);
   
   // Animations
-  const heartScale = useState(new Animated.Value(1))[0];
-  const pulseAnim = useState(new Animated.Value(0))[0];
+  const heartScale = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim2 = useRef(new Animated.Value(0)).current;
+  const sparkleAnim = useRef(new Animated.Value(0)).current;
+  const rotationAnim = useRef(new Animated.Value(0)).current;
 
   // Get image source
   const imageSource = photo.imageUrl || photo.uri || photo.image_url;
@@ -253,36 +257,79 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
     setShowAlbumInput(false);
   };
 
-  // Handle like with animation
+  // Handle like with professional pulsating animation
   const handleLike = () => {
     setIsLiked(true);
     setLikes(prev => prev + 1);
     
-    // Heart beat animation
+    // Reset and run animations for a strong pulsating feel
+    heartScale.setValue(1);
+    pulseAnim.setValue(0);
+    pulseAnim2.setValue(0);
+    sparkleAnim.setValue(0);
+    rotationAnim.setValue(0);
+
+    // 1. Smooth Double Pulse (Heartbeat)
     Animated.sequence([
-      Animated.timing(heartScale, {
+      // Primary soft expansion
+      Animated.spring(heartScale, {
         toValue: 1.4,
-        duration: 150,
+        friction: 4,
+        tension: 40,
         useNativeDriver: true,
       }),
-      Animated.timing(heartScale, {
+      // Soft settle back
+      Animated.spring(heartScale, {
         toValue: 1,
-        duration: 150,
+        friction: 8, // Higher friction for a calmer settle
+        tension: 20, // Lower tension for smoothness
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Pulse ring animation
-    pulseAnim.setValue(0);
-    Animated.timing(pulseAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
+    // 2. Gentle sequential rings
+    Animated.stagger(150, [
+      Animated.timing(pulseAnim, {
+        toValue: 1,
+        duration: 1000, // Longer duration for slower fade
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(pulseAnim2, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // 3. Subtle secondary effects
+    Animated.parallel([
+      // Very light shake
+      Animated.sequence([
+        Animated.timing(rotationAnim, {
+          toValue: 0.5,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(rotationAnim, {
+          toValue: 0,
+          friction: 6,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Soft Sparkle fade
+      Animated.timing(sparkleAnim, {
+        toValue: 1,
+        duration: 800,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      })
+    ]).start();
 
     onLike();
     
-    setTimeout(() => setIsLiked(false), 1000);
+    setTimeout(() => setIsLiked(false), 2000);
   };
 
   // Handle add comment
@@ -362,11 +409,35 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
 
   const pulseScale = pulseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 2],
+    outputRange: [1, 3],
   });
   const pulseOpacity = pulseAnim.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0, 0.8, 0],
+  });
+
+  const pulseScale2 = pulseAnim2.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.6, 0],
+    outputRange: [1, 2.5],
+  });
+  const pulseOpacity2 = pulseAnim2.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0, 0.6, 0],
+  });
+
+  const heartRotation = rotationAnim.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-15deg', '0deg', '15deg'],
+  });
+
+  const sparkleScale = sparkleAnim.interpolate({
+    inputRange: [0, 0.3, 1],
+    outputRange: [0, 1.2, 0.8],
+  });
+
+  const sparkleOpacity = sparkleAnim.interpolate({
+    inputRange: [0, 0.1, 0.8, 1],
+    outputRange: [0, 1, 1, 0],
   });
 
   const parsedComments: Comment[] = comments.map((comment) => {
@@ -495,8 +566,8 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
             </LinearGradient>
           )}
           
-          {/* Gradient Overlay for images only */}
-          {showControls && imageSource && imageSource.trim() !== '' && (
+          {/* Gradient Overlay for images only - Always visible to ensure button visibility */}
+          {imageSource && imageSource.trim() !== '' && (
             <LinearGradient
               colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
               style={styles.gradientOverlay}
@@ -514,16 +585,16 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
           </TouchableOpacity>
         )}
 
-        {/* Like Button - Visible on tap for both images and text posts */}
-        {showControls && (
-          <View style={styles.likeContainer}>
-            <TouchableOpacity
-              style={styles.likeButton}
-              onPress={handleLike}
-              activeOpacity={0.8}
-            >
-              {/* Pulse Ring */}
-              {isLiked && (
+        {/* Like Button - Always visible */}
+        <View style={styles.likeContainer}>
+          <TouchableOpacity
+            style={styles.likeButton}
+            onPress={handleLike}
+            activeOpacity={0.8}
+          >
+            {/* Pulse Ring */}
+            {isLiked && (
+              <>
                 <Animated.View
                   style={[
                     styles.pulseRing,
@@ -533,39 +604,53 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
                     },
                   ]}
                 />
-              )}
-              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                <Icon
-                  name={isLiked ? 'heart' : 'heart-outline'}
-                  size={24}
-                  color={isLiked ? '#ea384c' : '#fff'}
+                <Animated.View
+                  style={[
+                    styles.pulseRing,
+                    {
+                      transform: [{ scale: pulseScale2 }],
+                      opacity: pulseOpacity2,
+                      backgroundColor: 'rgba(234, 56, 76, 0.5)', // Lighter color for second pulse
+                    },
+                  ]}
                 />
-              </Animated.View>
-            </TouchableOpacity>
-            <Text style={styles.likeCount}>{likes}</Text>
-          </View>
-        )}
-
-        {/* Comments Button - Visible on tap for both images and text posts */}
-        {showControls && (
-          <TouchableOpacity
-            style={styles.commentsButton}
-            onPress={() => setShowComments(!showComments)}
-          >
-            <Icon 
-              name={showComments ? 'chatbubble' : 'chatbubble-outline'} 
-              size={20} 
-              color={showComments ? '#3b82f6' : '#fff'} 
-            />
-            {comments.length > 0 && (
-              <View style={styles.commentsBadge}>
-                <Text style={styles.commentsBadgeText}>
-                  {comments.length > 9 ? '9+' : comments.length}
-                </Text>
-              </View>
+              </>
             )}
+
+            <Animated.View style={{ 
+              transform: [
+                { scale: heartScale },
+                { rotate: heartRotation }
+              ] 
+            }}>
+              <Icon
+                name={isLiked ? 'heart' : 'heart-outline'}
+                size={24}
+                color={isLiked ? '#ea384c' : '#fff'}
+              />
+            </Animated.View>
           </TouchableOpacity>
-        )}
+          <Text style={styles.likeCount}>{likes}</Text>
+        </View>
+
+        {/* Comments Button - Always visible */}
+        <TouchableOpacity
+          style={styles.commentsButton}
+          onPress={() => setShowComments(!showComments)}
+        >
+          <Icon 
+            name={showComments ? 'chatbubble' : 'chatbubble-outline'} 
+            size={20} 
+            color={showComments ? '#3b82f6' : '#fff'} 
+          />
+          {comments.length > 0 && (
+            <View style={styles.commentsBadge}>
+              <Text style={styles.commentsBadgeText}>
+                {comments.length > 9 ? '9+' : comments.length}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
         {/* Caption & Owner Info - Only for images (text posts show it inside) */}
         {imageSource && imageSource.trim() !== '' && showControls && (
@@ -1103,6 +1188,12 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: '#ea384c',
+  },
+  sparkleContainer: {
+    display: 'none',
+  },
+  sparkle: {
+    display: 'none',
   },
   likeCount: {
     color: '#fff',

@@ -114,10 +114,10 @@ const SettingsScreen: React.FC = () => {
 
   const settingsOptions = [
     {
-      title: 'إعدادات عامة',
-      description: 'إعدادات التطبيق',
-      icon: 'person-outline',
-      onPress: () => navigation.navigate('Profile' as never),
+      title: 'الإشعارات',
+      description: 'إعدادات التنبيهات',
+      icon: 'notifications-outline',
+      onPress: () => navigation.navigate('Notifications' as never),
     },
     {
       title: '🔔 اختبار الإشعارات',
