@@ -310,33 +310,44 @@ export class GroupsService {
   // الحصول على أعضاء المجموعة
   static async getGroupMembers(groupId: string): Promise<GroupMember[]> {
     try {
-      const { data, error } = await supabase
+      // جلب الأعضاء أولاً
+      const { data: members, error: membersError } = await supabase
         .from('group_members')
         .select(`
           id,
           group_id,
           user_id,
           role,
-          joined_at,
-          users (
-            email,
-            full_name
-          )
+          joined_at
         `)
         .eq('group_id', groupId)
         .order('joined_at', { ascending: true });
 
-      if (error) {
-        throw new Error(`خطأ في جلب أعضاء المجموعة: ${error.message}`);
+      if (membersError) {
+        throw new Error(`خطأ في جلب أعضاء المجموعة: ${membersError.message}`);
       }
 
-      return (data || []).map((row: any) => {
-        const userRow = Array.isArray(row.users) ? row.users[0] : row.users;
+      if (!members || members.length === 0) return [];
+
+      // جلب بيانات المستخدمين لكل عضو بشكل منفصل لتجنب مشاكل Schema Cache والـ Relationships
+      const userIds = members.map(m => m.user_id);
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, email, full_name')
+        .in('id', userIds);
+
+      if (usersError) {
+        console.warn('Could not fetch user details for members:', usersError);
+      }
+
+      // دمج البيانات
+      return members.map(member => {
+        const userData = users?.find(u => u.id === member.user_id);
         return {
-          ...row,
+          ...member,
           users: {
-            email: userRow?.email || '',
-            full_name: userRow?.full_name ?? null,
+            email: userData?.email || '',
+            full_name: userData?.full_name ?? null,
           },
         } as GroupMember;
       });

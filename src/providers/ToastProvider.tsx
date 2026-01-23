@@ -8,6 +8,7 @@ interface ToastOptions {
   type?: ToastType;
   duration?: number;
   onPress?: () => void;
+  showIcon?: boolean;
 }
 
 interface ToastContextType {
@@ -35,12 +36,14 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [type, setType] = useState<ToastType>('info');
   const [duration, setDuration] = useState(4000);
   const [onPress, setOnPress] = useState<(() => void) | undefined>(undefined);
+  const [showIcon, setShowIcon] = useState(true);
 
-  const showToast = useCallback(({ message, type = 'info', duration = 4000, onPress }: ToastOptions) => {
+  const showToast = useCallback(({ message, type = 'info', duration = 4000, onPress, showIcon = true }: ToastOptions) => {
     setMessage(message);
     setType(type);
     setDuration(duration);
     setOnPress(() => onPress);
+    setShowIcon(showIcon);
     setVisible(true);
   }, []);
 
@@ -58,6 +61,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
         duration={duration}
         onDismiss={hideToast}
         onPress={onPress}
+        showIcon={showIcon}
       />
     </ToastContext.Provider>
   );

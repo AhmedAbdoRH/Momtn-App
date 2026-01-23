@@ -32,6 +32,7 @@ import {
   HeartLogo,
   PhotoGrid,
 } from '../../components';
+import { PhotoGridHandle } from '../../components/PhotoGrid';
 import { FloatingChatButton, GroupChatWindow } from '../components/chat';
 import NotificationsPopup from '../components/NotificationsPopup';
 
@@ -82,7 +83,22 @@ const HomeScreen: React.FC = () => {
   const [joinInviteCode, setJoinInviteCode] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const photoGridRef = useRef<PhotoGridHandle>(null);
   const photoGridOffset = useRef(0);
+  const [isNearBottom, setIsNearBottom] = useState(false);
+
+  const handleScroll = (event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    // Trigger when user is 500 pixels from the bottom
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 500;
+    
+    if (isCloseToBottom && !isNearBottom) {
+      setIsNearBottom(true);
+      photoGridRef.current?.loadMore();
+    } else if (!isCloseToBottom && isNearBottom) {
+      setIsNearBottom(false);
+    }
+  };
   const [userGroups, setUserGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
@@ -105,10 +121,17 @@ const HomeScreen: React.FC = () => {
   const [notificationTargetCommentId, setNotificationTargetCommentId] = useState<string | null>(null);
   const [notificationTargetParentCommentId, setNotificationTargetParentCommentId] = useState<string | null>(null);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
   const [showCreatedGroupModal, setShowCreatedGroupModal] = useState(false);
   const [createdGroupInfo, setCreatedGroupInfo] = useState<Group | null>(null);
   const [albums, setAlbums] = useState<{ id: string, name: string }[]>([]);
   const [loadingAlbums, setLoadingAlbums] = useState(false);
+  const [isEditingGroupName, setIsEditingGroupName] = useState(false);
+  const [editingGroupName, setEditingGroupName] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
 
   const fetchAlbums = useCallback(async () => {
     if (!user) return;
@@ -555,6 +578,115 @@ const HomeScreen: React.FC = () => {
     }
   };
 
+  const fetchGroupMembers = useCallback(async () => {
+    if (!selectedGroup) return;
+    setIsLoadingMembers(true);
+    try {
+      const members = await GroupsService.getGroupMembers(selectedGroup.id);
+      setGroupMembers(members);
+    } catch (error) {
+      console.error('Error fetching members:', error);
+      showToast({ message: 'فشل في تحميل قائمة الأعضاء', type: 'error' });
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  }, [selectedGroup, showToast]);
+
+  useEffect(() => {
+    if (showGroupSettings && selectedGroup) {
+      fetchGroupMembers();
+      setEditingGroupName(selectedGroup.name);
+      setIsEditingGroupName(false);
+    }
+  }, [showGroupSettings, fetchGroupMembers, selectedGroup]);
+
+  const handleUpdateGroupInfo = async (newName: string, newDescription?: string) => {
+    if (!selectedGroup) return;
+    setIsUpdatingGroup(true);
+    try {
+      const { data, error } = await supabase
+        .from('groups')
+        .update({ name: newName, description: newDescription })
+        .eq('id', selectedGroup.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setSelectedGroup(data);
+      setUserGroups(prev => prev.map(g => g.id === data.id ? data : g));
+      showToast({ message: 'تم تحديث اسم المساحة بنجاح', type: 'success' });
+      setIsEditingGroupName(false);
+    } catch (error) {
+      console.error('Error updating group:', error);
+      showToast({ message: 'فشل في تحديث المعلومات', type: 'error' });
+    } finally {
+      setIsUpdatingGroup(false);
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!selectedGroup) return;
+    
+    setAlertDialogProps({
+      title: 'مغادرة المساحة',
+      message: 'هل أنت متأكد من رغبتك في مغادرة هذه المساحة المشتركة؟',
+      type: 'danger',
+      confirmText: 'مغادرة',
+      cancelText: 'إلغاء',
+      onConfirm: async () => {
+        try {
+          setIsLoading(true);
+          await GroupsService.leaveGroup(selectedGroup.id);
+          showToast({ message: 'تمت مغادرة المساحة بنجاح', type: 'success' });
+          setShowGroupSettings(false);
+          setSelectedGroup(null);
+          setActiveTab('personal');
+          loadUserData();
+        } catch (error) {
+          console.error('Error leaving group:', error);
+          showToast({ message: 'فشل في مغادرة المساحة', type: 'error' });
+        } finally {
+          setIsLoading(false);
+          setShowAlertDialog(false);
+        }
+      },
+      onCancel: () => setShowAlertDialog(false)
+    });
+    setShowAlertDialog(true);
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!selectedGroup) return;
+
+    setAlertDialogProps({
+      title: 'حذف المساحة',
+      message: 'هل أنت متأكد من رغبتك في حذف هذه المساحة نهائياً؟ سيتم حذف جميع الصور والرسائل المرتبطة بها ولا يمكن التراجع عن هذا الإجراء.',
+      type: 'danger',
+      confirmText: 'حذف نهائي',
+      cancelText: 'إلغاء',
+      onConfirm: async () => {
+        try {
+          setIsLoading(true);
+          await GroupsService.deleteGroup(selectedGroup.id);
+          showToast({ message: 'تم حذف المساحة بنجاح', type: 'success' });
+          setShowGroupSettings(false);
+          setSelectedGroup(null);
+          setActiveTab('personal');
+          loadUserData();
+        } catch (error) {
+          console.error('Error deleting group:', error);
+          showToast({ message: 'فشل في حذف المساحة', type: 'error' });
+        } finally {
+          setIsLoading(false);
+          setShowAlertDialog(false);
+        }
+      },
+      onCancel: () => setShowAlertDialog(false)
+    });
+    setShowAlertDialog(true);
+  };
+
   const handlePasteInviteCode = async () => {
     try {
       const text = await Clipboard.getString();
@@ -576,12 +708,9 @@ const HomeScreen: React.FC = () => {
 
       console.log('Attempting to copy to clipboard:', text);
       Clipboard.setString(text);
-
-      if (Platform.OS === 'android') {
-        showToast({ message: 'تم نسخ الكود بنجاح ✅', type: 'success' });
-      } else {
-        showToast({ message: 'تم نسخ الكود إلى الحافظة', type: 'success' });
-      }
+      
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
       console.error('Clipboard error:', error);
       // Fallback to Share
@@ -794,6 +923,8 @@ const HomeScreen: React.FC = () => {
             style={styles.mainScrollView}
             contentContainerStyle={styles.mainScrollViewContent}
             showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
           >
             <View style={styles.topBar}>
               <TouchableOpacity
@@ -840,7 +971,7 @@ const HomeScreen: React.FC = () => {
             <HeartLogo />
 
             <View style={styles.headerTitleContainer}>
-              <Text style={styles.greetingText}>
+              <Text style={[styles.greetingText, activeTab === 'shared' && selectedGroup && { transform: [{ translateX: 20 }] }]}>
                 {activeTab === 'personal'
                   ? (user?.user_metadata?.greeting_message || welcomeMessage)
                   : selectedGroup
@@ -851,9 +982,9 @@ const HomeScreen: React.FC = () => {
               {activeTab === 'shared' && selectedGroup && (
                 <TouchableOpacity
                   style={styles.infoButton}
-                  onPress={() => setShowGroupInfo(true)}
+                  onPress={() => setShowGroupSettings(true)}
                 >
-                  <Icon name="information-circle-outline" size={24} color="#FFFFFF" />
+                  <Icon name="information-circle-outline" size={26} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
             </View>
@@ -875,24 +1006,19 @@ const HomeScreen: React.FC = () => {
               <TouchableOpacity
                 style={styles.addButton}
                 onPress={() => setShowCreateDialog(true)}
-                activeOpacity={0.85}
+                activeOpacity={0.8}
               >
-                <LinearGradient
-                  colors={['#ea384c', '#d94550', '#c73e48']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.addButtonGradient}
-                >
-                  <View style={styles.addButtonContent}>
-                    <Text style={styles.addButtonText}>إضافة امتنان جديد</Text>
-                  </View>
-                </LinearGradient>
+                <View style={styles.addButtonContent}>
+                  <Icon name="add" size={18} color="#FFFFFF" style={{ marginLeft: 5 }} />
+                  <Text style={styles.addButtonText}>إضافة امتنان جديد</Text>
+                </View>
               </TouchableOpacity>
             )}
 
             {(activeTab === 'personal' || (activeTab === 'shared' && selectedGroup)) && (
               <View onLayout={(event) => { photoGridOffset.current = event.nativeEvent.layout.y; }}>
                 <PhotoGrid
+                  ref={photoGridRef}
                   key={`${activeTab}-${selectedGroup?.id || 'personal'}-${photosKey}-${route.params?.selectedHashtag || 'none'}-${notificationTargetPhotoId || 'none'}`}
                   currentUserId={user?.id || ''}
                   currentUser={user ? {
@@ -945,12 +1071,7 @@ const HomeScreen: React.FC = () => {
               onPress={() => setShowCreateDialog(true)}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={['#ea384c', '#d94550', '#c73e48']}
-                style={styles.fabGradient}
-              >
-                <Icon name="add" size={30} color="#FFFFFF" />
-              </LinearGradient>
+              <Icon name="add" size={26} color="#FFFFFF" />
             </TouchableOpacity>
           )}
         </SafeAreaView>
@@ -1087,52 +1208,150 @@ const HomeScreen: React.FC = () => {
       </Modal>
 
       <Modal
-        visible={showGroupInfo && selectedGroup !== null}
+        visible={showGroupSettings && selectedGroup !== null}
         transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowGroupInfo(false)}
+        animationType="slide"
+        onRequestClose={() => setShowGroupSettings(false)}
       >
-        <View style={styles.modalOverlayCenter}>
-          <View style={styles.centeredModalContent}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.sharedSpacesModal, { height: '80%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>معلومات المساحة</Text>
-              <TouchableOpacity onPress={() => setShowGroupInfo(false)}>
-                <Icon name="close-circle-outline" size={26} color="#FFFFFF" />
+              <Text style={styles.modalTitle}>إعدادات المساحة</Text>
+              <TouchableOpacity onPress={() => setShowGroupSettings(false)} style={styles.closeButton}>
+                <Icon name="close" size={26} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>اسم المساحة:</Text>
-              <Text style={styles.infoValue}>{selectedGroup?.name}</Text>
+            <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+              {/* Group Info Section */}
+              <View style={styles.settingsSection}>
+                <Text style={styles.settingsSectionTitle}>معلومات المساحة</Text>
+                <View style={styles.settingsCard}>
+                  <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.infoLabel}>اسم المساحة</Text>
+                    {selectedGroup?.created_by === user?.id && !isEditingGroupName && (
+                      <TouchableOpacity onPress={() => setIsEditingGroupName(true)} style={styles.editButton}>
+                        <Icon name="create-outline" size={18} color={Colors.primary} />
+                        <Text style={styles.editButtonText}>تعديل</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  
+                  {isEditingGroupName ? (
+                    <View style={styles.editContainer}>
+                      <TextInput
+                        style={[styles.settingsInput, { flex: 1, marginTop: 0 }]}
+                        value={editingGroupName}
+                        onChangeText={setEditingGroupName}
+                        placeholder="اسم المساحة"
+                        placeholderTextColor="rgba(255,255,255,0.3)"
+                        autoFocus
+                      />
+                      <View style={styles.editActions}>
+                        <TouchableOpacity 
+                          style={[styles.saveButton, isUpdatingGroup && { opacity: 0.7 }]} 
+                          onPress={() => handleUpdateGroupInfo(editingGroupName, selectedGroup?.description || '')}
+                          disabled={isUpdatingGroup}
+                        >
+                          {isUpdatingGroup ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                          ) : (
+                            <Text style={styles.saveButtonText}>حفظ</Text>
+                          )}
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.cancelEditButton} 
+                          onPress={() => {
+                            setIsEditingGroupName(false);
+                            setEditingGroupName(selectedGroup?.name || '');
+                          }}
+                        >
+                          <Text style={styles.cancelEditText}>إلغاء</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <Text style={styles.settingsValueText}>{selectedGroup?.name}</Text>
+                  )}
 
-              <Text style={styles.infoLabel}>كود الدعوة:</Text>
-              <View style={[styles.inviteCodeContainer, styles.inviteCodeRow]}>
-                <TextInput
-                  style={[styles.inviteCodeText, styles.inviteCodeField]}
-                  value={selectedGroup?.invite_code ?? ''}
-                  editable={false}
-                  selectTextOnFocus={true}
-                />
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityLabel="نسخ كود الدعوة"
-                  style={styles.copyIconButton}
-                  onPress={() => copyToClipboard(selectedGroup?.invite_code ?? '')}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Icon name="copy-outline" size={20} color="#FFFFFF" />
-                  <Text style={styles.copyIconButtonText}>نسخ</Text>
-                </TouchableOpacity>
+                  <View style={styles.settingsDivider} />
+
+                  <Text style={[styles.infoLabel, { marginTop: 20, fontSize: 18, fontWeight: '800', color: Colors.textPrimary }]}>كود الدعوة</Text>
+                  <View style={styles.settingsInviteRow}>
+                    <View style={styles.inviteCodeContainerHighlight}>
+                      <Text style={styles.settingsInviteCode}>{selectedGroup?.invite_code}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={[styles.settingsCopyButton, isCopied && { backgroundColor: '#4ADE80' }]}
+                      onPress={() => copyToClipboard(selectedGroup?.invite_code || '')}
+                    >
+                      {isCopied ? (
+                        <Text style={styles.settingsCopyText}>تم النسخ</Text>
+                      ) : (
+                        <>
+                          <Icon name="copy-outline" size={18} color="#FFFFFF" />
+                          <Text style={styles.settingsCopyText}>نسخ الكود</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-              <Text style={styles.infoHint}>شارك هذا الكود مع أصدقائك لينضموا إليك</Text>
 
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#ea384c', marginTop: 20 }]}
-                onPress={() => setShowGroupInfo(false)}
-              >
-                <Text style={styles.buttonText}>إغلاق</Text>
-              </TouchableOpacity>
-            </View>
+              {/* Members Section */}
+              <View style={styles.settingsSection}>
+                <Text style={styles.settingsSectionTitle}>الأعضاء ({groupMembers.length})</Text>
+                <View style={styles.settingsCard}>
+                  {isLoadingMembers ? (
+                    <ActivityIndicator color="#ea384c" />
+                  ) : (
+                    groupMembers.map((member, index) => (
+                      <View key={member.user_id} style={[
+                        styles.memberItem,
+                        index !== groupMembers.length - 1 && styles.memberItemDivider
+                      ]}>
+                        <View style={styles.memberInfo}>
+                          <View style={styles.memberAvatar}>
+                            <Text style={styles.memberAvatarText}>
+                              {member.users?.full_name?.charAt(0) || 'U'}
+                            </Text>
+                          </View>
+                          <View>
+                            <Text style={styles.memberName}>{member.users?.full_name || 'مستخدم'}</Text>
+                            <Text style={styles.memberRole}>
+                              {member.role === 'creator' || member.role === 'admin' ? 'المنشئ' : 'عضو'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+              </View>
+
+              {/* Delete/Leave Actions */}
+              <View style={styles.settingsSection}>
+                <View style={[styles.settingsCard, { backgroundColor: 'transparent', borderWidth: 0, elevation: 0, padding: 0 }]}>
+                  {selectedGroup?.created_by === user?.id ? (
+                    <TouchableOpacity 
+                      style={styles.dangerButton}
+                      onPress={handleDeleteGroup}
+                    >
+                      <Icon name="trash-outline" size={16} color="#ea384c" />
+                      <Text style={styles.dangerButtonText}>حذف المساحة نهائياً</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.dangerButton}
+                      onPress={handleLeaveGroup}
+                    >
+                      <Icon name="log-out-outline" size={16} color="#ea384c" />
+                      <Text style={styles.dangerButtonText}>مغادرة المساحة</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1594,10 +1813,199 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   sidebarSettingsMiniText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: '#fff',
     fontSize: 12,
-    marginRight: 6,
     fontWeight: '600',
+    marginRight: 6,
+  },
+  settingsSection: {
+    padding: Spacing.xl,
+  },
+  settingsSectionTitle: {
+    color: Colors.textMuted,
+    fontSize: Typography.bodySmall.fontSize,
+    marginBottom: Spacing.md,
+    textAlign: 'right',
+    fontWeight: '700',
+  },
+  settingsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  settingsInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    color: Colors.textPrimary,
+    fontSize: Typography.body.fontSize,
+    textAlign: 'right',
+    marginTop: Spacing.xs,
+  },
+  settingsValueText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.body.fontSize,
+    textAlign: 'right',
+    marginTop: Spacing.xs,
+  },
+  settingsDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginVertical: Spacing.lg,
+    width: '100%',
+  },
+  settingsInviteRow: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  inviteCodeContainerHighlight: {
+    backgroundColor: 'rgba(234, 56, 76, 0.15)',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 2,
+    borderColor: 'rgba(234, 56, 76, 0.5)',
+    marginBottom: Spacing.md,
+    minWidth: 200,
+    alignItems: 'center',
+  },
+  settingsInviteCode: {
+    color: Colors.primary,
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: 3,
+    textShadowColor: 'rgba(234, 56, 76, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  settingsCopyButton: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    elevation: 4,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  editButton: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    backgroundColor: 'rgba(234, 56, 76, 0.1)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  editButtonText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  editContainer: {
+    marginTop: Spacing.sm,
+  },
+  editActions: {
+    flexDirection: 'row-reverse',
+    marginTop: Spacing.sm,
+    justifyContent: 'flex-start',
+  },
+  saveButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    marginLeft: Spacing.sm,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  cancelEditButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+  },
+  cancelEditText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  settingsCopyText: {
+    color: '#FFFFFF',
+    marginRight: Spacing.xs,
+    fontWeight: '700',
+  },
+  memberItem: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+  },
+  memberItemDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  memberInfo: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    flex: 1,
+  },
+  memberAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: Spacing.md,
+  },
+  memberAvatarText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  memberName: {
+    color: Colors.textPrimary,
+    fontSize: Typography.body.fontSize,
+    textAlign: 'right',
+  },
+  memberRole: {
+    color: Colors.textMuted,
+    fontSize: Typography.tiny.fontSize,
+    textAlign: 'right',
+  },
+  dangerButton: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(234, 56, 76, 0.2)',
+    alignSelf: 'center',
+    marginTop: Spacing.sm,
+  },
+  dangerButtonText: {
+    color: '#ea384c',
+    marginRight: Spacing.xs,
+    fontSize: Typography.bodySmall.fontSize,
+    fontWeight: '500',
   },
   sidebarSectionTitle: {
     color: 'rgba(255, 255, 255, 0.4)',
@@ -1701,41 +2109,27 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   addButton: {
-    marginHorizontal: Spacing.xxl,
+    alignSelf: 'center',
     marginBottom: Spacing.xl,
     borderRadius: BorderRadius.full,
-    overflow: 'hidden',
-    ...Shadows.lg,
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.4,
-  },
-  addButtonGradient: {
-    paddingVertical: Spacing.md + 2,
-    paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.full,
+    paddingVertical: Spacing.xs + 2,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: '#ea384c',
+    elevation: 4,
+    shadowColor: '#ea384c',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   addButtonContent: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  addButtonIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.sm,
   },
   addButtonText: {
-    color: Colors.textPrimary,
-    fontSize: Typography.body.fontSize,
+    color: '#FFFFFF',
+    fontSize: Typography.bodySmall.fontSize,
     fontWeight: '700',
-    marginRight: Spacing.sm,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   userDropdownOverlay: {
     position: 'absolute',
@@ -2019,25 +2413,20 @@ const styles = StyleSheet.create({
   },
   fabButton: {
     position: 'absolute',
-    bottom: 100, // تم رفعه قليلاً من 90 إلى 100
+    bottom: 100,
     left: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    zIndex: ZIndex.overlay,
-  },
-  fabGradient: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(234, 56, 76, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    opacity: 0.75, // شفافية الزر
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    zIndex: ZIndex.overlay,
   },
 });
 

@@ -74,14 +74,14 @@ const CustomAlertDialog: React.FC<CustomAlertDialogProps> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.buttonContainer}>
-            {onCancel && (
-              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onCancel}>
-                <Text style={styles.cancelButtonText}>{cancelText}</Text>
-              </TouchableOpacity>
-            )}
             {onConfirm && (
               <TouchableOpacity style={[styles.button, styles.confirmButton]} onPress={onConfirm}>
                 <Text style={styles.confirmButtonText}>{confirmText}</Text>
+              </TouchableOpacity>
+            )}
+            {onCancel && (
+              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onCancel}>
+                <Text style={styles.cancelButtonText}>{cancelText}</Text>
               </TouchableOpacity>
             )}
             {!onConfirm && !onCancel && (

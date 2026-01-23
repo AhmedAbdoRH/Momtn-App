@@ -444,7 +444,9 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
       {/* Main Card */}
       <TouchableOpacity 
         activeOpacity={0.95}
-        onPress={() => setShowControls(!showControls)}
+        onPress={() => {
+          setShowControls(!showControls);
+        }}
         style={styles.card}
       >
         {/* Image / Text Content */}
@@ -460,36 +462,31 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
               colors={['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.03)']}
               style={styles.textPostBackground}
             >
-              <View style={styles.glassShine} />
+              {/* تم إزالة الدائرة الجمالية من اليسار (glassShine) */}
               
-              {/* اسم الألبوم وخيارات التعديل في الأعلى - يظهر فقط عند اللمس */}
+              {/* اسم الألبوم والناشر في الأعلى - يظهر عند الضغط فقط */}
               <View style={styles.textPostHeaderInside}>
-                 {showControls && hashtags && hashtags.length > 0 ? (
-                    <View style={styles.albumBadge}>
+                 {showControls && hashtags && hashtags.length > 0 && (
+                    <View style={[styles.albumBadge, { position: 'absolute', right: 0 }]}>
                        <Text style={styles.albumBadgeText}>{hashtags[0]}</Text>
                     </View>
-                 ) : <View />}
-
-                 {currentUserId === photoOwnerId && showControls && (
-                    <TouchableOpacity
-                      style={styles.editButtonSmall}
-                      onPress={() => setShowOptionsMenu(true)}
-                    >
-                      <Icon name="ellipsis-vertical" size={16} color="#fff" />
-                    </TouchableOpacity>
                  )}
+                 
+                 {/* اسم الكاتب في المنتصف - يظهر عند الضغط فقط وفقط إذا كان في المساحة المشتركة (group_id موجود) */}
+                 {showControls && photo.group_id ? (
+                    <View style={styles.authorBadgeCenter}>
+                       <Text style={styles.authorNameCenter}>{ownerName}</Text>
+                    </View>
+                 ) : null}
               </View>
 
               <Text style={styles.textPostContent} numberOfLines={5}>
                 {caption || photo.content}
               </Text>
 
-              {/* معلومات الكاتب والوقت في الأسفل - يظهر فقط عند اللمس */}
+              {/* الوقت في الأسفل - يظهر فقط عند اللمس */}
               {showControls && (
                 <View style={styles.textPostFooter}>
-                  <View style={styles.ownerBadgeText}>
-                    <Text style={styles.ownerNameText}>{ownerName}</Text>
-                  </View>
                   <Text style={styles.timestampText}>
                     {photo.timestamp ? formatDate(photo.timestamp) : ''}
                   </Text>
@@ -507,8 +504,8 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
           )}
         </View>
 
-        {/* Options Menu Button - Only for owner (Removed from here for text posts as it is now inside the gradient) */}
-        {currentUserId === photoOwnerId && showControls && imageSource && imageSource.trim() !== '' && (
+        {/* Options Menu Button - Only for owner */}
+        {currentUserId === photoOwnerId && showControls && (
           <TouchableOpacity
             style={styles.optionsButton}
             onPress={() => setShowOptionsMenu(true)}
@@ -517,65 +514,71 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
           </TouchableOpacity>
         )}
 
-        {/* Like Button */}
-        <View style={styles.likeContainer}>
+        {/* Like Button - Visible on tap for both images and text posts */}
+        {showControls && (
+          <View style={styles.likeContainer}>
+            <TouchableOpacity
+              style={styles.likeButton}
+              onPress={handleLike}
+              activeOpacity={0.8}
+            >
+              {/* Pulse Ring */}
+              {isLiked && (
+                <Animated.View
+                  style={[
+                    styles.pulseRing,
+                    {
+                      transform: [{ scale: pulseScale }],
+                      opacity: pulseOpacity,
+                    },
+                  ]}
+                />
+              )}
+              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                <Icon
+                  name={isLiked ? 'heart' : 'heart-outline'}
+                  size={24}
+                  color={isLiked ? '#ea384c' : '#fff'}
+                />
+              </Animated.View>
+            </TouchableOpacity>
+            <Text style={styles.likeCount}>{likes}</Text>
+          </View>
+        )}
+
+        {/* Comments Button - Visible on tap for both images and text posts */}
+        {showControls && (
           <TouchableOpacity
-            style={styles.likeButton}
-            onPress={handleLike}
-            activeOpacity={0.8}
+            style={styles.commentsButton}
+            onPress={() => setShowComments(!showComments)}
           >
-            {/* Pulse Ring */}
-            {isLiked && (
-              <Animated.View
-                style={[
-                  styles.pulseRing,
-                  {
-                    transform: [{ scale: pulseScale }],
-                    opacity: pulseOpacity,
-                  },
-                ]}
-              />
+            <Icon 
+              name={showComments ? 'chatbubble' : 'chatbubble-outline'} 
+              size={20} 
+              color={showComments ? '#3b82f6' : '#fff'} 
+            />
+            {comments.length > 0 && (
+              <View style={styles.commentsBadge}>
+                <Text style={styles.commentsBadgeText}>
+                  {comments.length > 9 ? '9+' : comments.length}
+                </Text>
+              </View>
             )}
-            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-              <Icon
-                name={isLiked ? 'heart' : 'heart-outline'}
-                size={24}
-                color={isLiked ? '#ea384c' : '#fff'}
-              />
-            </Animated.View>
           </TouchableOpacity>
-          <Text style={styles.likeCount}>{likes}</Text>
-        </View>
+        )}
 
-        {/* Comments Button */}
-        <TouchableOpacity
-          style={styles.commentsButton}
-          onPress={() => setShowComments(!showComments)}
-        >
-          <Icon 
-            name={showComments ? 'chatbubble' : 'chatbubble-outline'} 
-            size={20} 
-            color={showComments ? '#3b82f6' : '#fff'} 
-          />
-          {comments.length > 0 && (
-            <View style={styles.commentsBadge}>
-              <Text style={styles.commentsBadgeText}>
-                {comments.length > 9 ? '9+' : comments.length}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        {/* Caption & Owner Info */}
-        {(caption || photo.content) && showControls && (
+        {/* Caption & Owner Info - Only for images (text posts show it inside) */}
+        {imageSource && imageSource.trim() !== '' && showControls && (
           <View style={styles.captionContainer}>
             <View style={styles.captionInner}>
               <View style={styles.ownerBadge}>
                 <Text style={styles.ownerName}>{ownerName}</Text>
               </View>
-              <Text style={styles.captionText} numberOfLines={3}>
-                {caption || photo.content}
-              </Text>
+              {(caption || photo.content) && (
+                <Text style={styles.captionText} numberOfLines={3}>
+                  {caption || photo.content}
+                </Text>
+              )}
               {hashtags.length > 0 && (
                 <View style={styles.hashtagsContainer}>
                   {hashtags.map((tag, index) => (
@@ -970,7 +973,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     minHeight: 200,
   },
-  glassShine: {
+  /* glassShine: {
     position: 'absolute',
     top: -100,
     left: -100,
@@ -979,14 +982,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 100,
     transform: [{ rotate: '45deg' }],
-  },
+  }, */
   textPostHeaderInside: {
     position: 'absolute',
     top: 15,
-    left: 15,
-    right: 15,
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
@@ -996,16 +999,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     lineHeight: 30,
-    paddingHorizontal: 10,
   },
   textPostFooter: {
     position: 'absolute',
     bottom: 15,
     left: 15,
     right: 15,
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  authorBadgeCenter: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  authorNameCenter: {
+    color: '#fef08a',
+    fontSize: 12,
+    fontWeight: '700',
   },
   albumBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -1159,6 +1174,7 @@ const styles = StyleSheet.create({
   },
   hashtagsContainer: {
     flexDirection: 'row-reverse',
+    justifyContent: 'flex-start',
     flexWrap: 'wrap',
     marginTop: 4,
   },

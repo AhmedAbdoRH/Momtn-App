@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   ActivityIndicator,
   Alert,
   RefreshControl,
@@ -11,6 +12,7 @@ import {
   TouchableOpacity,
   Modal,
   Image,
+  Easing,
 } from 'react-native';
 import PhotoCard, { Photo, Comment, User } from './PhotoCard';
 import { useToast } from '../src/providers/ToastProvider';
@@ -34,17 +36,25 @@ interface PhotoGridProps {
   onScrollRequest?: (y: number) => void;
 }
 
-const PhotoGrid: React.FC<PhotoGridProps> = ({
-  selectedGroupId,
-  currentUserId,
-  currentUser,
-  embedded = false,
-  initialHashtag = null,
-  initialPhotoId = null,
-  initialCommentId = null,
-  initialParentCommentId = null,
-  onScrollRequest,
-}) => {
+export interface PhotoGridHandle {
+  loadMore: () => void;
+  refresh: () => void;
+}
+
+const PhotoGrid = forwardRef<PhotoGridHandle, PhotoGridProps>((
+  {
+    selectedGroupId,
+    currentUserId,
+    currentUser,
+    embedded = false,
+    initialHashtag = null,
+    initialPhotoId = null,
+    initialCommentId = null,
+    initialParentCommentId = null,
+    onScrollRequest,
+  },
+  ref
+) => {
   const { showToast } = useToast();
   const photoPositions = useRef<Record<string, number>>({});
   // Photo management state
@@ -53,6 +63,14 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasPhotosLoadedOnce, setHasPhotosLoadedOnce] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const pageRef = useRef(0);
+  const hasMoreRef = useRef(true);
+  const isFetchingMoreRef = useRef(false);
+  const PAGE_SIZE = 10;
 
   // Filtering state
   const [selectedHashtag, setSelectedHashtag] = useState<string | null>(initialHashtag);
@@ -72,8 +90,34 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
   const [tutorialDismissed, setTutorialDismissed] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
+  // Animation for horizontal loader
+  const scrollX = useRef(new Animated.Value(-1)).current;
+
+  useEffect(() => {
+    if (loading || isFetchingMore) {
+      scrollX.setValue(0);
+      Animated.loop(
+        Animated.timing(scrollX, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [loading, isFetchingMore]);
+
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useImperativeHandle(ref, () => ({
+    loadMore: () => {
+      fetchPhotos(true);
+    },
+    refresh: () => {
+      handleRefresh();
+    },
+  }));
 
   // Scroll to initial photo
   useEffect(() => {
@@ -100,31 +144,78 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
     currentUser?.email?.split('@')[0] ||
     'مستخدم';
 
-  const fetchPhotos = useCallback(async (): Promise<void> => {
+  const fetchPhotos = useCallback(async (loadMore = false): Promise<void> => {
     if (!currentUserId) return;
 
-    setLoading(true);
-    try {
-      let query = supabase.from('photos').select('*');
+    if (loadMore) {
+      if (!hasMoreRef.current || isFetchingMoreRef.current) return;
+      setIsFetchingMore(true);
+      isFetchingMoreRef.current = true;
+    } else {
+      setLoading(true);
+      setPage(0);
+      pageRef.current = 0;
+      setHasMore(true);
+      hasMoreRef.current = true;
+    }
 
+    try {
+      const currentPage = loadMore ? pageRef.current + 1 : 0;
+      const from = currentPage * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      let query = supabase.from('photos').select('*', { count: 'exact' });
+
+      // Filtering by group or user
       if (selectedGroupId) {
         query = query.eq('group_id', selectedGroupId);
       } else {
         query = query.is('group_id', null).eq('user_id', currentUserId);
       }
 
-      const { data: photosData, error } = await query.order('created_at', {
-        ascending: false,
-      });
+      // Filtering by hashtag if selected
+      if (selectedHashtag) {
+        query = query.contains('hashtags', [selectedHashtag]);
+      }
+
+      // Sorting
+      switch (sortBy) {
+        case 'newest':
+          query = query.order('created_at', { ascending: false });
+          break;
+        case 'oldest':
+          query = query.order('created_at', { ascending: true });
+          break;
+        case 'likes':
+          query = query.order('likes', { ascending: false }).order('created_at', { ascending: false });
+          break;
+        default:
+          query = query.order('created_at', { ascending: false });
+      }
+
+      // Pagination
+      const { data: photosData, error, count } = await query.range(from, to);
 
       if (error) throw error;
 
       if (!photosData || photosData.length === 0) {
-        setPhotos([]);
-        setHasPhotosLoadedOnce(true);
+        if (!loadMore) {
+          setPhotos([]);
+          setHasPhotosLoadedOnce(true);
+        }
+        setHasMore(false);
+        hasMoreRef.current = false;
         setLoading(false);
+        setIsFetchingMore(false);
+        isFetchingMoreRef.current = false;
         return;
       }
+
+      // Check if there are more photos
+      const more = count !== null ? from + photosData.length < count : photosData.length === PAGE_SIZE;
+      setHasMore(more);
+      hasMoreRef.current = more;
+      if (count !== null) setTotalCount(count);
 
       // Fetch users
       const userIds = [...new Set(photosData.map((p) => p.user_id))];
@@ -206,7 +297,13 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
         };
       });
 
-      setPhotos(mappedPhotos);
+      if (loadMore) {
+        setPhotos((prev) => [...prev, ...mappedPhotos]);
+        setPage(currentPage);
+        pageRef.current = currentPage;
+      } else {
+        setPhotos(mappedPhotos);
+      }
       setHasPhotosLoadedOnce(true);
     } catch (error) {
       console.error('Error fetching photos:', error);
@@ -214,37 +311,14 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setIsFetchingMore(false);
+      isFetchingMoreRef.current = false;
     }
-  }, [currentUserId, selectedGroupId]);
+  }, [currentUserId, selectedGroupId, selectedHashtag, sortBy]);
 
   const applyFilters = useCallback(() => {
-    let filtered = [...photos];
-
-    if (selectedHashtag) {
-      filtered = filtered.filter((p) => p.hashtags?.includes(selectedHashtag));
-    }
-
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return (
-            new Date(b.timestamp || '').getTime() -
-            new Date(a.timestamp || '').getTime()
-          );
-        case 'oldest':
-          return (
-            new Date(a.timestamp || '').getTime() -
-            new Date(b.timestamp || '').getTime()
-          );
-        case 'likes':
-          return b.likes - a.likes;
-        default:
-          return 0;
-      }
-    });
-
-    setFilteredPhotos(filtered);
-  }, [photos, selectedHashtag, sortBy]);
+    setFilteredPhotos(photos);
+  }, [photos]);
 
   // Check tutorial status
   const checkTutorialStatus = useCallback(async () => {
@@ -639,7 +713,7 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
           onPress={() => setSelectedHashtag(null)}
         >
           <Text style={[styles.filterButtonText, !selectedHashtag && styles.filterButtonTextActive]}>
-            الكل ({photos.length})
+            الكل {totalCount !== null ? `(${totalCount})` : ''}
           </Text>
         </TouchableOpacity>
 
@@ -768,60 +842,136 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ea384c" />
-        <Text style={styles.loadingText}>جاري تحميل الصور...</Text>
+        <View style={styles.horizontalLoaderTrack}>
+          <Animated.View
+            style={[
+              styles.horizontalLoaderBar,
+              {
+                width: 150,
+                transform: [{
+                  translateX: scrollX.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-150, 300]
+                  })
+                }]
+              }
+            ]}
+          >
+            <LinearGradient
+              colors={['transparent', '#ea384c', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ flex: 1 }}
+            />
+          </Animated.View>
+        </View>
       </View>
     );
   }
 
   // Main render
-  const renderPhotos = () => (
-    <Animated.View style={[styles.photosContainer, { opacity: fadeAnim }]}>
-      {filteredPhotos.map((photo) => (
-        <View
-          key={photo.id}
-          onLayout={(event) => {
-            photoPositions.current[photo.id] = event.nativeEvent.layout.y;
-          }}
-        >
-          <PhotoCard
-            photo={photo}
-            onLike={() => handleLike(photo.id)}
-            onDelete={() => handleDelete(photo.id)}
-            onUpdateCaption={(caption, hashtags) =>
-              handleUpdateCaption(photo.id, caption, hashtags)
-            }
-            onAddComment={(content) => handleAddComment(photo.id, content)}
-            onLikeComment={handleLikeComment}
-            onDeleteComment={handleDeleteComment}
-            currentUserId={currentUserId}
-            currentUser={currentUser}
-            isGroupPhoto={!!selectedGroupId}
-            selectedGroupId={selectedGroupId}
-            autoOpenComments={initialPhotoId === photo.id && !!initialCommentId}
-            initialCommentId={initialPhotoId === photo.id ? initialCommentId : null}
-            initialParentCommentId={initialPhotoId === photo.id ? initialParentCommentId : null}
-          />
-        </View>
-      ))}
-      <View style={{ height: 20 }} />
-    </Animated.View>
+  const renderItem = ({ item: photo }: { item: Photo }) => (
+    <View
+      onLayout={(event) => {
+        photoPositions.current[photo.id] = event.nativeEvent.layout.y;
+      }}
+    >
+      <PhotoCard
+        photo={photo}
+        onLike={() => handleLike(photo.id)}
+        onDelete={() => handleDelete(photo.id)}
+        onUpdateCaption={(caption, hashtags) =>
+          handleUpdateCaption(photo.id, caption, hashtags)
+        }
+        onAddComment={(content) => handleAddComment(photo.id, content)}
+        onLikeComment={handleLikeComment}
+        onDeleteComment={handleDeleteComment}
+        currentUserId={currentUserId}
+        currentUser={currentUser}
+        isGroupPhoto={!!selectedGroupId}
+        selectedGroupId={selectedGroupId}
+        autoOpenComments={initialPhotoId === photo.id && !!initialCommentId}
+        initialCommentId={initialPhotoId === photo.id ? initialCommentId : null}
+        initialParentCommentId={initialPhotoId === photo.id ? initialParentCommentId : null}
+      />
+    </View>
   );
 
+  const renderFooter = () => {
+    if (isFetchingMore) {
+      return (
+        <View style={styles.footerLoader}>
+          <View style={styles.horizontalLoaderTrack}>
+            <Animated.View
+              style={[
+                styles.horizontalLoaderBar,
+                {
+                  width: 150,
+                  transform: [{
+                    translateX: scrollX.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-150, 300]
+                    })
+                  }]
+                }
+              ]}
+            >
+              <LinearGradient
+                colors={['transparent', '#ea384c', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ flex: 1 }}
+              />
+            </Animated.View>
+          </View>
+        </View>
+      );
+    }
 
+    if (!hasMore && photos.length > 0) {
+      return (
+        <View style={styles.footerLoader}>
+          <Text style={styles.footerLoaderText}>لقد وصلت إلى نهاية المنشورات</Text>
+        </View>
+      );
+    }
+
+    return <View style={{ height: 40 }} />;
+  };
+
+  const renderHeader = () => (
+    <View>
+      {photos.length > 0 && renderFilterBar()}
+    </View>
+  );
 
   return (
     <>
       <View style={styles.container}>
-        {photos.length > 0 && renderFilterBar()}
-
         {embedded ? (
           <View style={styles.contentContainer}>
-            {filteredPhotos.length > 0 ? renderPhotos() : renderEmptyState()}
+            {renderHeader()}
+            {filteredPhotos.length > 0 ? (
+              <>
+                <Animated.View style={[styles.photosContainer, { opacity: fadeAnim }]}>
+                  {filteredPhotos.map((photo) => (
+                    <View key={photo.id}>{renderItem({ item: photo })}</View>
+                  ))}
+                </Animated.View>
+                {renderFooter()}
+              </>
+            ) : renderEmptyState()}
           </View>
         ) : (
-          <ScrollView
-            style={styles.scrollView}
+          <FlatList
+            data={filteredPhotos}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
+            onEndReached={() => fetchPhotos(true)}
+            onEndReachedThreshold={0.5}
+            ListHeaderComponent={renderHeader}
+            ListFooterComponent={renderFooter}
+            ListEmptyComponent={renderEmptyState}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -831,9 +981,8 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
                 colors={['#ea384c']}
               />
             }
-          >
-            {filteredPhotos.length > 0 ? renderPhotos() : renderEmptyState()}
-          </ScrollView>
+            contentContainerStyle={styles.flatListContent}
+          />
         )}
       </View>
 
@@ -841,7 +990,7 @@ const PhotoGrid: React.FC<PhotoGridProps> = ({
       {renderTutorialModal()}
     </>
   );
-};
+});
 
 
 const styles = StyleSheet.create({
@@ -864,6 +1013,34 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     fontSize: 14,
     marginTop: 12,
+  },
+  horizontalLoaderTrack: {
+    width: 300,
+    height: 3,
+    backgroundColor: 'transparent',
+    borderRadius: 1,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  horizontalLoaderBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
+  },
+  flatListContent: {
+    paddingBottom: 20,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  footerLoaderText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    marginLeft: 10,
   },
   // Filter Bar
   filterBarContainer: {

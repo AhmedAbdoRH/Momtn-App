@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   ActivityIndicator,
   ScrollView,
   KeyboardAvoidingView,
+  Animated,
+  Easing,
 } from 'react-native';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import ImagePicker from 'react-native-image-crop-picker';
@@ -58,6 +60,23 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
   const [selectedAlbums, setSelectedAlbums] = useState<Set<string>>(new Set());
   const [showAlbumInput, setShowAlbumInput] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
+
+  // Animation for horizontal loader
+  const scrollX = useRef(new Animated.Value(-1)).current;
+
+  useEffect(() => {
+    if (isUploading) {
+      scrollX.setValue(0);
+      Animated.loop(
+        Animated.timing(scrollX, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [isUploading]);
 
   const resetForm = useCallback(() => {
     setContentType('image');
@@ -267,10 +286,32 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
     setIsUploading(true);
 
     try {
+      let finalImageUri = imageUri;
+
+      // تطبيق الدوران إذا كان موجوداً
+      if (contentType === 'image' && imageUri && rotation !== 0) {
+        try {
+          const rotatedImage = await ImagePicker.openCropper({
+            path: imageUri,
+            width: imageFile?.width || 1200,
+            height: imageFile?.height || 1200,
+            rotation: rotation,
+            mediaType: 'photo',
+            compressImageQuality: 0.6,
+          });
+          if (rotatedImage) {
+            finalImageUri = rotatedImage.path;
+          }
+        } catch (rotateError) {
+          console.error('Error applying rotation before upload:', rotateError);
+          // نواصل باستخدام الصورة الأصلية إذا فشل الدوران التلقائي
+        }
+      }
+
       let uploadedImageUrl: string | undefined;
 
-      if (contentType === 'image' && imageUri) {
-        const url = await uploadImage(imageUri);
+      if (contentType === 'image' && finalImageUri) {
+        const url = await uploadImage(finalImageUri);
         if (url) {
           uploadedImageUrl = url;
         } else {
@@ -538,7 +579,31 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
                 }
               >
                 {isUploading ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <View style={styles.horizontalLoaderContainer}>
+                    <View style={styles.horizontalLoaderTrack}>
+                      <Animated.View
+                        style={[
+                          styles.horizontalLoaderBar,
+                          {
+                            width: 150,
+                            transform: [{
+                              translateX: scrollX.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [-150, 300]
+                              })
+                            }]
+                          }
+                        ]}
+                      >
+                        <LinearGradient
+                          colors={['transparent', '#ea384c', 'transparent']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={{ flex: 1 }}
+                        />
+                      </Animated.View>
+                    </View>
+                  </View>
                 ) : (
                   <>
                     <Icon name="checkmark-circle" size={20} color="#fff" />
@@ -844,8 +909,29 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
+  },
+  // Horizontal Loader Styles
+  horizontalLoaderContainer: {
+    width: 120,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  horizontalLoaderTrack: {
+    width: 300,
+    height: 3,
+    backgroundColor: 'transparent',
+    borderRadius: 1,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  horizontalLoaderBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
   },
 });
 

@@ -10,6 +10,7 @@ interface ToastNotificationProps {
     onDismiss?: () => void;
     onPress?: () => void;
     duration?: number;
+    showIcon?: boolean;
 }
 
 const { width } = Dimensions.get('window');
@@ -21,6 +22,7 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({
     onDismiss,
     onPress,
     duration = 4000,
+    showIcon = true,
 }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(-100)).current; // Start from top
@@ -146,9 +148,11 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({
                 activeOpacity={0.9}
             >
                 <View style={styles.mainContent}>
-                    <View style={[styles.iconContainer, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-                        <Icon name={getIconName()} size={24} color={config.icon} />
-                    </View>
+                    {showIcon && (
+                        <View style={[styles.iconContainer, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
+                            <Icon name={getIconName()} size={24} color={config.icon} />
+                        </View>
+                    )}
                     <View style={styles.textContainer}>
                         <Text style={styles.message} numberOfLines={2}>{message}</Text>
                     </View>
@@ -181,7 +185,8 @@ const styles = StyleSheet.create({
         top: 50, // Display at top for better visibility
         left: 20,
         right: 20,
-        zIndex: 10000,
+        zIndex: 99999,
+        elevation: 1000,
         alignItems: 'center',
     },
     content: {
