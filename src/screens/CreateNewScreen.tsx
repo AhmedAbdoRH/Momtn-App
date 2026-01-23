@@ -8,7 +8,6 @@ import {
   TextInput,
   ScrollView,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -22,6 +21,7 @@ import { useAuth } from '../components/auth/AuthProvider';
 import { useToast } from '../providers/ToastProvider';
 import RNFS from 'react-native-fs';
 import { decode as decodeBase64 } from 'base64-arraybuffer';
+import HorizontalLoader from '../components/ui/HorizontalLoader';
 
 interface CreateNewScreenProps {
   navigation: any;
@@ -498,7 +498,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
             disabled={isSubmitting || (!imageUri && contentType === 'image') || (!textContent.trim() && contentType === 'text')}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <HorizontalLoader color="#fff" width={100} />
             ) : (
               <>
                 <Icon name="checkmark-circle" size={20} color="#fff" />
@@ -574,8 +574,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   typeButtonActive: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
+    backgroundColor: '#ea384c',
+    borderColor: '#ea384c',
   },
   typeButtonText: {
     color: 'rgba(255,255,255,0.6)',
@@ -748,7 +748,7 @@ const styles = StyleSheet.create({
   },
   addAlbumBtn: {
     flex: 1,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#ea384c',
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',

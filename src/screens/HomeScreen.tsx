@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Dimensions,
   TextInput,
-  ActivityIndicator,
   Share,
   ToastAndroid,
   Platform,
@@ -43,6 +42,7 @@ import { NotificationsService } from '../services/notifications';
 import { supabase } from '../services/supabase';
 import { ProfileService } from '../services/profile';
 import { NotificationNavigationService } from '../services/notificationNavigation';
+import HorizontalLoader from '../components/ui/HorizontalLoader';
 import {
   Colors,
   Spacing,
@@ -835,7 +835,9 @@ const HomeScreen: React.FC = () => {
                 </Text>
 
                 {loadingAlbums ? (
-                  <ActivityIndicator color={Colors.primary} size="small" style={{ marginVertical: 20 }} />
+                  <View style={{ marginVertical: 20, alignItems: 'center' }}>
+                    <HorizontalLoader color={Colors.primary} width={150} />
+                  </View>
                 ) : albums.length > 0 ? (
                   albums.map((album, _index) => (
                     <TouchableOpacity
@@ -1150,7 +1152,7 @@ const HomeScreen: React.FC = () => {
             >
               {isLoading ? (
                 <View style={styles.emptyGroupsContainer}>
-                  <ActivityIndicator size="large" color="#ea384c" />
+                  <HorizontalLoader color="#ea384c" width={200} />
                   <Text style={[styles.noGroupsText, { marginTop: 10 }]}>جاري تحميل المساحات...</Text>
                 </View>
               ) : userGroups.length === 0 ? (
@@ -1282,7 +1284,7 @@ const HomeScreen: React.FC = () => {
                           disabled={isUpdatingGroup}
                         >
                           {isUpdatingGroup ? (
-                            <ActivityIndicator size="small" color="#FFF" />
+                            <HorizontalLoader color="#FFF" width={60} />
                           ) : (
                             <Text style={styles.saveButtonText}>حفظ</Text>
                           )}
@@ -1331,7 +1333,9 @@ const HomeScreen: React.FC = () => {
                 <Text style={styles.settingsSectionTitle}>الأعضاء ({groupMembers.length})</Text>
                 <View style={styles.settingsCard}>
                   {isLoadingMembers ? (
-                    <ActivityIndicator color="#ea384c" />
+                    <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                      <HorizontalLoader color="#ea384c" width={150} />
+                    </View>
                   ) : (
                     groupMembers.map((member, index) => (
                       <View key={member.user_id} style={[
@@ -1414,7 +1418,7 @@ const HomeScreen: React.FC = () => {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="white" />
+                  <HorizontalLoader color="white" width={100} />
                 ) : (
                   <Text style={styles.buttonText}>إنشاء</Text>
                 )}
@@ -1480,7 +1484,7 @@ const HomeScreen: React.FC = () => {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <ActivityIndicator color="white" />
+                  <HorizontalLoader color="white" width={100} />
                 ) : (
                   <Text style={styles.buttonText}>انضمام</Text>
                 )}

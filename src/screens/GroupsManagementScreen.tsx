@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  ActivityIndicator,
   TextInput,
   Modal,
 } from 'react-native';
+import HorizontalLoader from '../components/ui/HorizontalLoader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -136,7 +136,7 @@ const GroupsManagementScreen: React.FC = () => {
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#ea384c" />
+                <HorizontalLoader color="#ea384c" width={200} />
               </View>
             ) : groups.length === 0 ? (
               <View style={styles.emptyContainer}>
@@ -209,7 +209,7 @@ const GroupsManagementScreen: React.FC = () => {
                 disabled={creating}
               >
                 {creating ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <HorizontalLoader color="#fff" width={60} />
                 ) : (
                   <Text style={styles.confirmButtonText}>إنشاء</Text>
                 )}

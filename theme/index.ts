@@ -3,9 +3,9 @@
 
 export const Colors = {
   // Primary Colors (الألوان الأساسية)
-  primary: '#d94550',
-  primaryHover: '#ea384c',
-  primaryLight: '#ff535f',
+  primary: '#ea384c',
+  primaryHover: '#ff535f',
+  primaryLight: '#ff7c85',
   primaryDark: '#b73842',
 
   // Background Gradients (ألوان الخلفية)

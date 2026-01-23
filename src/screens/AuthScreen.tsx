@@ -7,7 +7,6 @@ import {
   Alert,
   Platform,
   StatusBar,
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   ScrollView,
@@ -16,6 +15,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useToast } from '../providers/ToastProvider';
 import HeartLogo from '../../components/HeartLogo';
+import HorizontalLoader from '../components/ui/HorizontalLoader';
 import {
   Colors,
   Spacing,
@@ -79,7 +79,7 @@ const AuthScreen: React.FC = () => {
                 activeOpacity={0.8}
               >
                 {loading ? (
-                  <ActivityIndicator color={Colors.googleBlue} />
+                  <HorizontalLoader color={Colors.googleBlue} width={100} />
                 ) : (
                   <View style={styles.buttonContent}>
                     <Text style={styles.googleButtonText}>

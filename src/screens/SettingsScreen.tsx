@@ -10,7 +10,6 @@ import {
   Image,
   Alert,
   StatusBar,
-  ActivityIndicator,
 } from 'react-native';
 import {
   launchImageLibrary,
@@ -27,6 +26,7 @@ import { supabase } from '../services/supabase';
 import { ProfileService } from '../services/profile';
 import { TestNotification } from '../utils/testNotification';
 import { Colors, Spacing, Typography, BorderRadius } from '../../theme';
+import HorizontalLoader from '../components/ui/HorizontalLoader';
 
 const gradientOptions = [
   {
@@ -229,7 +229,7 @@ const SettingsScreen: React.FC = () => {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#ea384c" />
+        <HorizontalLoader color="#ea384c" width={200} />
       </View>
     );
   }
@@ -266,7 +266,7 @@ const SettingsScreen: React.FC = () => {
                   )}
                   {isUploadingImage && (
                     <View style={styles.avatarLoadingOverlay}>
-                      <ActivityIndicator color="#fff" />
+                      <HorizontalLoader color="#fff" width={60} />
                     </View>
                   )}
                 </View>
@@ -300,14 +300,12 @@ const SettingsScreen: React.FC = () => {
                 style={[
                   styles.saveButton, 
                   saveStates.name === 'loading' && styles.saveButtonLoading,
-                  saveStates.name === 'success' && styles.saveButtonSuccess,
-                  saveStates.name === 'error' && styles.saveButtonError,
                 ]} 
                 onPress={handleSaveName} 
                 disabled={saveStates.name !== 'idle'}
               >
                 {saveStates.name === 'loading' ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <HorizontalLoader color="#fff" width={100} />
                 ) : saveStates.name === 'success' ? (
                   <View style={styles.buttonContent}>
                     <Icon name="checkmark-circle" size={18} color="#fff" />
@@ -337,16 +335,13 @@ const SettingsScreen: React.FC = () => {
               <TouchableOpacity 
                 style={[
                   styles.saveButton, 
-                  { backgroundColor: '#ea384c' },
                   saveStates.greeting === 'loading' && styles.saveButtonLoading,
-                  saveStates.greeting === 'success' && styles.saveButtonSuccess,
-                  saveStates.greeting === 'error' && styles.saveButtonError,
                 ]} 
                 onPress={handleSaveGreeting} 
                 disabled={saveStates.greeting !== 'idle'}
               >
                 {saveStates.greeting === 'loading' ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <HorizontalLoader color="#fff" width={100} />
                 ) : saveStates.greeting === 'success' ? (
                   <View style={styles.buttonContent}>
                     <Icon name="checkmark-circle" size={18} color="#fff" />
@@ -486,7 +481,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   saveButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#ea384c',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
@@ -495,12 +490,6 @@ const styles = StyleSheet.create({
   },
   saveButtonLoading: {
     opacity: 0.7,
-  },
-  saveButtonSuccess: {
-    backgroundColor: '#10b981', // أخضر للنجاح
-  },
-  saveButtonError: {
-    backgroundColor: '#ef4444', // أحمر للفشل
   },
   buttonContent: {
     flexDirection: 'row-reverse',

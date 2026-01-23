@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { View, ActivityIndicator, Text, Animated, Easing, Dimensions } from 'react-native';
+import { View, Text, Animated, Easing, Dimensions } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '../components/auth/AuthProvider';
+import HorizontalLoader from '../components/ui/HorizontalLoader';
 
 // Import screens
 import AuthScreen from '../screens/AuthScreen';
@@ -22,21 +23,6 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 const AppNavigator: React.FC = () => {
   const { user, loading } = useAuth();
-  const scrollX = useRef(new Animated.Value(-1)).current;
-
-  useEffect(() => {
-    if (loading) {
-      scrollX.setValue(0);
-      Animated.loop(
-        Animated.timing(scrollX, {
-          toValue: 1,
-          duration: 1500,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        })
-      ).start();
-    }
-  }, [loading]);
 
   if (loading) {
     return (
@@ -46,52 +32,20 @@ const AppNavigator: React.FC = () => {
         alignItems: 'center',
         backgroundColor: '#14090e'
       }}>
+        <HorizontalLoader color="#ea384c" width={200} />
         <View style={{
-          width: 300,
-          height: 3,
-          position: 'relative',
-          overflow: 'hidden',
-          backgroundColor: 'transparent',
-        }}>
-          {/* Animated Moving Highlight */}
-          <Animated.View
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: 150,
-              height: '100%',
-              transform: [{
-                translateX: scrollX.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-150, 300]
-                })
-              }]
-            }}
-          >
-            <LinearGradient
-              colors={['transparent', '#ea384c', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{ flex: 1 }}
-            />
-          </Animated.View>
-        </View>
-      <View style={{
-        position: 'absolute',
-        bottom: 40,
-        alignItems: 'center',
-        width: '100%'
-      }}>
-        <Text style={{
-          color: 'rgba(255, 255, 255, 0.4)',
           position: 'absolute',
           bottom: 40,
-          fontSize: 12,
-          letterSpacing: 1,
-          alignSelf: 'center'
-        }}>V 1.1.2</Text>
-      </View>
+          alignItems: 'center',
+          width: '100%'
+        }}>
+          <Text style={{
+            color: 'rgba(255, 255, 255, 0.4)',
+            fontSize: 12,
+            letterSpacing: 1,
+            alignSelf: 'center'
+          }}>V 1.1.2</Text>
+        </View>
       </View>
     );
   }

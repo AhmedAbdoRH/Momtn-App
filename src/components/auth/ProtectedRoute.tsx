@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import HorizontalLoader from '../ui/HorizontalLoader';
 import { useAuth } from './AuthProvider';
 
 interface ProtectedRouteProps {
@@ -12,7 +13,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ea384c" />
+        <HorizontalLoader color="#ea384c" width={200} />
         <Text style={styles.loadingText}>جاري التحميل...</Text>
       </View>
     );

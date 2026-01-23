@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   FlatList,
-  ActivityIndicator,
   Alert,
   RefreshControl,
   Animated,
@@ -20,6 +19,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { supabase } from '../src/services/supabase';
 import { NotificationsService } from '../src/services/notifications';
+import HorizontalLoader from '../src/components/ui/HorizontalLoader';
 
 interface PhotoGridProps {
   closeSidebar?: () => void;
@@ -89,23 +89,6 @@ const PhotoGrid = forwardRef<PhotoGridHandle, PhotoGridProps>((
   const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
   const [tutorialDismissed, setTutorialDismissed] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
-
-  // Animation for horizontal loader
-  const scrollX = useRef(new Animated.Value(-1)).current;
-
-  useEffect(() => {
-    if (loading || isFetchingMore) {
-      scrollX.setValue(0);
-      Animated.loop(
-        Animated.timing(scrollX, {
-          toValue: 1,
-          duration: 1500,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        })
-      ).start();
-    }
-  }, [loading, isFetchingMore]);
 
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -842,29 +825,7 @@ const PhotoGrid = forwardRef<PhotoGridHandle, PhotoGridProps>((
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <View style={styles.horizontalLoaderTrack}>
-          <Animated.View
-            style={[
-              styles.horizontalLoaderBar,
-              {
-                width: 150,
-                transform: [{
-                  translateX: scrollX.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-150, 300]
-                  })
-                }]
-              }
-            ]}
-          >
-            <LinearGradient
-              colors={['transparent', '#ea384c', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{ flex: 1 }}
-            />
-          </Animated.View>
-        </View>
+        <HorizontalLoader color="#ea384c" width={200} />
       </View>
     );
   }
@@ -901,29 +862,7 @@ const PhotoGrid = forwardRef<PhotoGridHandle, PhotoGridProps>((
     if (isFetchingMore) {
       return (
         <View style={styles.footerLoader}>
-          <View style={styles.horizontalLoaderTrack}>
-            <Animated.View
-              style={[
-                styles.horizontalLoaderBar,
-                {
-                  width: 150,
-                  transform: [{
-                    translateX: scrollX.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [-150, 300]
-                    })
-                  }]
-                }
-              ]}
-            >
-              <LinearGradient
-                colors={['transparent', '#ea384c', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{ flex: 1 }}
-              />
-            </Animated.View>
-          </View>
+          <HorizontalLoader color="#ea384c" width={150} />
         </View>
       );
     }

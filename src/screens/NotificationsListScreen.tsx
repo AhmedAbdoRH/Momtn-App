@@ -7,9 +7,9 @@ import {
   FlatList,
   SafeAreaView,
   StatusBar,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import HorizontalLoader from '../components/ui/HorizontalLoader';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -158,7 +158,7 @@ const NotificationsListScreen: React.FC = () => {
           {/* Notifications List */}
           {loading && notifications.length === 0 ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#ea384c" />
+              <HorizontalLoader color="#ea384c" width={200} />
             </View>
           ) : (
             <FlatList

@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   Dimensions,
   ScrollView,
 } from 'react-native';
+import HorizontalLoader from './ui/HorizontalLoader';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNotifications } from '../hooks/useNotifications';
 import { AppNotification } from '../services/notifications';
@@ -136,7 +136,7 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ userId, onClose
 
       {loading && notifications.length === 0 ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="small" color="#ea384c" />
+          <HorizontalLoader color="#ea384c" width={100} />
           <Text style={styles.loadingText}>جاري التحميل...</Text>
         </View>
       ) : notifications.length === 0 ? (

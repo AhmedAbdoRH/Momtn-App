@@ -150,7 +150,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
           placeholderTextColor={Colors.textMuted}
         />
         <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: Colors.info }]}
+          style={styles.saveButton}
           onPress={handleSaveDisplayName}
           disabled={isUpdating}
         >

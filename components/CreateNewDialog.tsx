@@ -10,7 +10,6 @@ import {
   Alert,
   Platform,
   Image,
-  ActivityIndicator,
   ScrollView,
   KeyboardAvoidingView,
   Animated,
@@ -25,6 +24,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import RNFS from 'react-native-fs';
 import { decode as decodeBase64 } from 'base64-arraybuffer';
 import { useToast } from '../src/providers/ToastProvider';
+import HorizontalLoader from '../src/components/ui/HorizontalLoader';
 
 interface CreateNewDialogProps {
   visible: boolean;
@@ -579,31 +579,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
                 }
               >
                 {isUploading ? (
-                  <View style={styles.horizontalLoaderContainer}>
-                    <View style={styles.horizontalLoaderTrack}>
-                      <Animated.View
-                        style={[
-                          styles.horizontalLoaderBar,
-                          {
-                            width: 150,
-                            transform: [{
-                              translateX: scrollX.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [-150, 300]
-                              })
-                            }]
-                          }
-                        ]}
-                      >
-                        <LinearGradient
-                          colors={['transparent', '#ea384c', 'transparent']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={{ flex: 1 }}
-                        />
-                      </Animated.View>
-                    </View>
-                  </View>
+                  <HorizontalLoader color="#ea384c" width={150} />
                 ) : (
                   <>
                     <Icon name="checkmark-circle" size={20} color="#fff" />
@@ -865,7 +841,7 @@ const styles = StyleSheet.create({
   },
   addAlbumBtn: {
     flex: 1,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#ea384c',
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',

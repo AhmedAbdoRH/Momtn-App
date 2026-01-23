@@ -11,9 +11,9 @@ import {
   ScrollView,
   Animated,
   Alert,
-  ActivityIndicator,
   Easing,
 } from 'react-native';
+import HorizontalLoader from '../src/components/ui/HorizontalLoader';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { supabase } from '../src/services/supabase';
@@ -703,7 +703,7 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
               disabled={!newComment.trim() || isCommentLoading}
             >
               {isCommentLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <HorizontalLoader color="#fff" width={30} />
               ) : (
                 <Icon name="send" size={16} color="#fff" />
               )}
@@ -1304,7 +1304,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#ea384c',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,

@@ -9,11 +9,11 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Image,
   Alert,
   PermissionsAndroid,
 } from 'react-native';
+import HorizontalLoader from '../ui/HorizontalLoader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -393,7 +393,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       {loading ? (
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <HorizontalLoader color={Colors.primary} width={150} />
       ) : (
         <>
           <Icon name="chatbubbles-outline" size={60} color={Colors.textMuted} />
@@ -438,7 +438,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
             {/* Messages List */}
             {loading && messages.length === 0 ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors.primary} />
+                <HorizontalLoader color={Colors.primary} width={200} />
               </View>
             ) : (
               <FlatList
@@ -456,8 +456,8 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                 onEndReachedThreshold={0.5}
                 ListFooterComponent={
                   loading && messages.length > 0 ? (
-                    <View style={{ paddingVertical: 10 }}>
-                      <ActivityIndicator size="small" color={Colors.primary} />
+                    <View style={{ paddingVertical: 10, alignItems: 'center' }}>
+                      <HorizontalLoader color={Colors.primary} width={100} />
                     </View>
                   ) : (hasMore && messages.length > 0 ? (
                     <TouchableOpacity
@@ -519,7 +519,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                   disabled={sending}
                 >
                   {sending ? (
-                    <ActivityIndicator size="small" color={Colors.textPrimary} />
+                    <HorizontalLoader color={Colors.textPrimary} width={30} />
                   ) : (
                     <Icon
                       name={inputText.trim() || selectedImage ? "send" : "heart"}
@@ -584,7 +584,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
             disabled={downloading}
           >
             {downloading ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <HorizontalLoader color="#fff" width={30} />
             ) : (
               <>
                 <Icon name="download-outline" size={24} color="#fff" />
