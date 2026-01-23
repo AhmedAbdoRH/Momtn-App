@@ -100,7 +100,14 @@ export const applyGradientById = (gradientId: string) => {
 // حفظ إعدادات الخلفية الخاصة بالمستخدم
 const saveUserBackgroundPreference = async (userId: string, gradientId: string) => {
   try {
-    // حفظ الإعدادات خاصة بالمستخدم فقط
+    // تحديث metadata في Auth (للمزامنة عبر الأجهزة)
+    const { error } = await supabase.auth.updateUser({
+      data: { app_background: gradientId }
+    });
+    
+    if (error) throw error;
+    
+    // حفظ احتياطي في localStorage
     localStorage.setItem(`user-background-${userId}`, gradientId);
     console.log(`Saved background preference for user ${userId}:`, gradientId);
     return true;
@@ -111,10 +118,15 @@ const saveUserBackgroundPreference = async (userId: string, gradientId: string) 
 };
 
 // جلب إعدادات الخلفية الخاصة بالمستخدم
-const getUserBackgroundPreference = async (userId: string): Promise<string | null> => {
+const getUserBackgroundPreference = async (user: any): Promise<string | null> => {
   try {
-    const saved = localStorage.getItem(`user-background-${userId}`);
-    console.log(`Got background preference for user ${userId}:`, saved);
+    // الأولوية لـ metadata من Supabase
+    const metadataBackground = user?.user_metadata?.app_background;
+    if (metadataBackground) return metadataBackground;
+    
+    // ثم localStorage كاحتياطي
+    const saved = localStorage.getItem(`user-background-${user.id}`);
+    console.log(`Got background preference for user ${user.id}:`, saved);
     return saved;
   } catch (error) {
     console.error('Error getting background preference:', error);
@@ -140,7 +152,7 @@ export const BackgroundSettings: React.FC = () => {
       
       try {
         setIsLoading(true);
-        const savedGradientId = await getUserBackgroundPreference(user.id);
+        const savedGradientId = await getUserBackgroundPreference(user);
         const gradientId = savedGradientId || 'default';
         
         console.log("Loading background preference for user:", user.id, gradientId);

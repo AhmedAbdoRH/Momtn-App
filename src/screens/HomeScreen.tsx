@@ -812,12 +812,16 @@ const HomeScreen: React.FC = () => {
 
                   <TouchableOpacity
                     style={styles.sidebarSettingsMini}
+                    activeOpacity={0.7}
                     onPress={() => {
+                      console.log('Navigating to Settings from Sidebar...');
                       toggleDrawer(false);
-                      navigation.navigate('Settings' as never);
+                      setTimeout(() => {
+                        navigation.navigate('Settings' as any);
+                      }, 100);
                     }}
                   >
-                    <Icon name="settings-outline" size={16} color="rgba(255,255,255,0.7)" />
+                    <Icon name="settings-outline" size={16} color="rgba(255,255,255,0.9)" />
                     <Text style={styles.sidebarSettingsMiniText}>الإعدادات العامة</Text>
                   </TouchableOpacity>
                 </View>
@@ -1830,11 +1834,13 @@ const styles = StyleSheet.create({
   sidebarSettingsMini: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-    marginTop: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   sidebarSettingsMiniText: {
     color: '#fff',
@@ -2084,6 +2090,7 @@ const styles = StyleSheet.create({
   sidebarUserEmail: {
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 14,
+    marginBottom: 10,
   },
   sidebarDivider: {
     height: 1,

@@ -24,16 +24,21 @@ export const useAuth = () => {
 };
 
 // Helper function to load user's background preference
-const loadUserBackgroundPreference = async (userId: string) => {
+const loadUserBackgroundPreference = async (user: User) => {
   try {
-    const savedGradient = localStorage.getItem(`user-background-${userId}`);
-    const gradientId = savedGradient || 'default';
+    // الأولوية لـ metadata من Supabase (للمزامنة)
+    const metadataBackground = user.user_metadata?.app_background;
+    
+    // ثم localStorage كاحتياطي
+    const savedGradient = localStorage.getItem(`user-background-${user.id}`);
+    
+    const gradientId = metadataBackground || savedGradient || 'default';
 
-    console.log(`Loading background preference for user ${userId}:`, gradientId);
+    console.log(`Loading background preference for user ${user.id}:`, gradientId);
 
     // Dispatch event to apply the user's background
     window.dispatchEvent(new CustomEvent('apply-gradient', {
-      detail: { gradientId, userId }
+      detail: { gradientId, userId: user.id }
     }));
   } catch (error) {
     console.error('Error loading user background preference:', error);

@@ -44,12 +44,6 @@ const Index = () => {
   // حالة لتحريك النقر على الزر
   const [btnAnimation, setBtnAnimation] = useState(false);
 
-  // State to track if the photo grid is empty. Initialized to true.
-  // This state *could* be used to control a placeholder, but we are removing the explicit placeholder in this component.
-  // حالة لتتبع ما إذا كانت شبكة الصور فارغة. تبدأ بقيمة true.
-  // هذه الحالة *يمكن* استخدامها للتحكم في صورة مؤقتة، لكننا نزيل الصورة المؤقتة الصريحة في هذا المكون.
-  const [isGridEmpty, setIsGridEmpty] = useState(true); // Note: State remains, but associated JSX is removed. / ملاحظة: الحالة تبقى، لكن الـ JSX المرتبط بها تمت إزالته.
-
   // State for selected group
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedGroupName, setSelectedGroupName] = useState<string>('');
@@ -68,21 +62,26 @@ const Index = () => {
   
   // State for greeting message with default value
   const [greetingMessage, setGreetingMessage] = useState(
-    localStorage.getItem('userGreeting') || 'لحظاتك السعيدة، والنعم الجميلة في حياتك'
+    'لحظاتك السعيدة، والنعم الجميلة في حياتك'
   );
   
-  // Load greeting message from localStorage when user changes
+  // Load greeting message from user metadata when user changes
   useEffect(() => {
     if (user) {
-      const savedGreeting = localStorage.getItem(`userGreeting_${user.id}`) || 
-                         'لحظاتك السعيدة، والنعم الجميلة في حياتك';
-      setGreetingMessage(savedGreeting);
+      const metadataGreeting = user.user_metadata?.greeting_message || 
+                             'لحظاتك السعيدة، والنعم الجميلة في حياتك';
+      setGreetingMessage(metadataGreeting);
       
       // Listen for greeting updates from settings
       const handleGreetingUpdate = () => {
-        const updatedGreeting = localStorage.getItem(`userGreeting_${user.id}`) || 
-                              'لحظاتك السعيدة، والنعم الجميلة في حياتك';
-        setGreetingMessage(updatedGreeting);
+        // We can either fetch the user again or rely on the event.
+        // Since updateUser updates the local session in Supabase client,
+        // we might need to get the latest user object.
+        supabase.auth.getUser().then(({ data: { user: latestUser } }) => {
+          if (latestUser) {
+            setGreetingMessage(latestUser.user_metadata?.greeting_message || 'لحظاتك السعيدة، والنعم الجميلة في حياتك');
+          }
+        });
       };
       
       window.addEventListener('greetingUpdated', handleGreetingUpdate);
@@ -196,20 +195,6 @@ const Index = () => {
       }
     };
   }, [sidebarOpen, showGroupsDropdown]); // Dependency array: re-run effect only if sidebarOpen or showGroupsDropdown changes
-
-  /**
-   * Callback function passed to PhotoGrid to update the grid's empty status.
-   * This is still useful even without the explicit placeholder in this component,
-   * as it might be used for other conditional logic in the future.
-   * دالة رد نداء يتم تمريرها إلى PhotoGrid لتحديث حالة فراغ الشبكة.
-   * لا تزال هذه مفيدة حتى بدون الصورة المؤقتة الصريحة في هذا المكون，
-   * حيث قد تستخدم لمنطق شرطي آخر في المستقبل.
-   * @param {boolean} isEmpty - True if the grid is empty, false otherwise.
-   */
-  const handleGridStatusChange = (isEmpty: boolean) => {
-    console.log("Index: Grid empty status received from PhotoGrid:", isEmpty); // For debugging / للمعاينة
-    setIsGridEmpty(isEmpty); // Update the state based on PhotoGrid's report / تحديث الحالة بناءً على تقرير PhotoGrid
-  };
 
   return (
     // Provides heart sound context to children
@@ -385,32 +370,9 @@ const Index = () => {
                   />
                   {selectedGroupId ? "إضافة امتنان للمجموعة" : "إضافة امتنان جديد"}
                 </span>
-                {/* Inner pulse animation element */}
-                {/* عنصر تحريك النبض الداخلي */}
-                <span
-                  className="absolute inset-0 rounded-lg bg-[#b73842]/50 animate-inner-pulse z-0"
-                  style={{ transformOrigin: "center" }}
-                ></span>
               </Button>
             </div>
           </div>
-
-          {/* --- Conditional Placeholder Image REMOVED --- */}
-          {/* --- تم إزالة الصورة المؤقتة الشرطية --- */}
-          {/* The block previously here that rendered `/EmptyCard.png` based on `isGridEmpty` has been removed as requested. */}
-          {/* تم حذف الكتلة التي كانت هنا والتي تعرض `/EmptyCard.png` بناءً على `isGridEmpty` حسب الطلب. */}
-          {/* {isGridEmpty && ( */}
-          {/* <div className="text-center mt-10 mb-10 fade-in"> */}
-          {/* <img */}
-          {/* src="/EmptyCard.png" */}
-          {/* alt="أضف أول امتنان لك" */}
-          {/* className="mx-auto w-72 h-auto opacity-80 hover:opacity-100 transition-opacity" */}
-          {/* /> */}
-          {/* </div> */}
-          {/* )} */}
-          {/* --- End of REMOVED Placeholder Image --- */}
-          {/* --- نهاية الصورة المؤقتة المحذوفة --- */}
-
 
           {/* Photo Grid Component */}
           {/* مكون شبكة الصور */}
@@ -433,10 +395,6 @@ const Index = () => {
               if (typeof window !== 'undefined') {
                   window.dispatchEvent(new CustomEvent("photo-added"));
               }
-              // 2. Update the state (though it no longer controls the explicit placeholder here)
-              // 2. تحديث الحالة (مع أنها لم تعد تتحكم في الصورة المؤقتة الصريحة هنا)
-              console.log("Index: Setting grid to not empty."); // للمعاينة
-              setIsGridEmpty(false); // Assume grid is no longer empty / افتراض أن الشبكة لم تعد فارغة
             }}
           />
 
