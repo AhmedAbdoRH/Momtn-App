@@ -25,6 +25,7 @@ import RNFS from 'react-native-fs';
 import { decode as decodeBase64 } from 'base64-arraybuffer';
 import { useToast } from '../src/providers/ToastProvider';
 import HorizontalLoader from '../src/components/ui/HorizontalLoader';
+import { useBackground } from '../src/providers/BackgroundProvider';
 
 interface CreateNewDialogProps {
   visible: boolean;
@@ -41,6 +42,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
 }) => {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { selectedGradient } = useBackground();
 
   // Content type
   const [contentType, setContentType] = useState<'image' | 'text'>('image');
@@ -295,6 +297,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
             path: imageUri,
             width: imageFile?.width || 1200,
             height: imageFile?.height || 1200,
+            // @ts-ignore - rotation is supported but may not be in types
             rotation: rotation,
             mediaType: 'photo',
             compressImageQuality: 0.6,
@@ -326,7 +329,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
 
       // إذا كان من نوع نص، نرسل سلسلة فارغة للصورة لتجنب قيود قاعدة البيانات
       onSubmit(content, contentType === 'text' ? '' : uploadedImageUrl, hashtags);
-      showToast({ message: 'تم نشر الصورة بنجاح', type: 'success' });
+      showToast({ message: 'تم اضافة الإمتنان بنجاح', type: 'success' });
       resetForm();
       onClose();
     } catch (error) {
@@ -352,9 +355,10 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
     >
       <View style={Platform.OS === 'ios' ? styles.iosContainer : styles.androidOverlay}>
         <LinearGradient
-          colors={['#14090e', '#1a1a2e', '#16213e']}
+          colors={selectedGradient.colors}
           style={styles.gradientContainer}
         >
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
           <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
@@ -380,22 +384,6 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
                 {/* Content Type Selector */}
                 <View style={styles.typeSelector}>
                   <TouchableOpacity
-                    style={[styles.typeButton, contentType === 'image' && styles.typeButtonActive]}
-                    onPress={() => setContentType('image')}
-                  >
-                    <Icon
-                      name="image-outline"
-                      size={20}
-                      color={contentType === 'image' ? '#fff' : 'rgba(255,255,255,0.6)'}
-                    />
-                    <Text
-                      style={[styles.typeButtonText, contentType === 'image' && styles.typeButtonTextActive]}
-                    >
-                      رفع صورة
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
                     style={[styles.typeButton, contentType === 'text' && styles.typeButtonActive]}
                     onPress={() => setContentType('text')}
                   >
@@ -408,6 +396,22 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
                       style={[styles.typeButtonText, contentType === 'text' && styles.typeButtonTextActive]}
                     >
                       امتنان كتابي
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.typeButton, contentType === 'image' && styles.typeButtonActive]}
+                    onPress={() => setContentType('image')}
+                  >
+                    <Icon
+                      name="image-outline"
+                      size={20}
+                      color={contentType === 'image' ? '#fff' : 'rgba(255,255,255,0.6)'}
+                    />
+                    <Text
+                      style={[styles.typeButtonText, contentType === 'image' && styles.typeButtonTextActive]}
+                    >
+                      رفع صورة
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -569,7 +573,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
                   (isUploading ||
                     (!imageUri && contentType === 'image') ||
                     (!textContent.trim() && contentType === 'text')) &&
-                    styles.submitButtonDisabled,
+                  styles.submitButtonDisabled,
                 ]}
                 onPress={handleSubmit}
                 disabled={
@@ -664,8 +668,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   typeButtonActive: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
+    backgroundColor: '#ea384c',
+    borderColor: '#ea384c',
   },
   typeButtonText: {
     color: 'rgba(255,255,255,0.6)',

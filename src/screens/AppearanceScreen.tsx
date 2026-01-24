@@ -11,26 +11,49 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
+import { useBackground, gradientOptions, GradientOption } from '../providers/BackgroundProvider';
+import { useAuth } from '../components/auth/AuthProvider';
+import { useToast } from '../providers/ToastProvider';
+import { Alert } from 'react-native';
 
 const AppearanceScreen: React.FC = () => {
   const navigation = useNavigation();
-  
+  const { selectedGradient: currentGradient, setGradient, isPremiumUser } = useBackground();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
   const [darkMode, setDarkMode] = useState(true);
   const [animations, setAnimations] = useState(true);
-  const [selectedTheme, setSelectedTheme] = useState('default');
+  const [selectedTheme, setSelectedTheme] = useState(currentGradient.id);
 
-  const themes = [
-    { id: 'default', name: 'الافتراضي', colors: ['#14090e', '#4a1e34', '#9c3d1a'] },
-    { id: 'ocean', name: 'المحيط', colors: ['#0a192f', '#172a45', '#1e3a5f'] },
-    { id: 'forest', name: 'الغابة', colors: ['#0d1f0d', '#1a3a1a', '#2d5a2d'] },
-    { id: 'sunset', name: 'الغروب', colors: ['#1a0a1a', '#3d1a3d', '#5a2d5a'] },
-  ];
+  const handleThemeChange = async (theme: GradientOption) => {
+    if (theme.isPremium && !isPremiumUser) {
+      Alert.alert(
+        'ميزة ممتن بريميوم 👑',
+        'هذه السمة مخصصة لمشتركي نسخة البريميوم. ستتوفر نسخة "ممتن بريميوم" قريباً!',
+        [
+          { text: 'حسناً', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+
+    setSelectedTheme(theme.id);
+    try {
+      await setGradient(theme.id);
+      showToast({ message: 'تم تغيير المظهر بنجاح', type: 'success' });
+    } catch (error) {
+      console.error('Error changing theme:', error);
+      showToast({ message: 'فشل تغيير المظهر', type: 'error' });
+    }
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#14090e', '#4a1e34']} style={styles.gradient}>
+      <LinearGradient colors={currentGradient.colors} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.header}>
@@ -46,16 +69,22 @@ const AppearanceScreen: React.FC = () => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>السمة</Text>
               <View style={styles.themesGrid}>
-                {themes.map((theme) => (
+                {gradientOptions.map((theme) => (
                   <TouchableOpacity
                     key={theme.id}
                     style={[
                       styles.themeCard,
                       selectedTheme === theme.id && styles.themeCardSelected,
                     ]}
-                    onPress={() => setSelectedTheme(theme.id)}
+                    onPress={() => handleThemeChange(theme)}
                   >
-                    <LinearGradient colors={theme.colors} style={styles.themePreview} />
+                    <LinearGradient colors={theme.colors} style={styles.themePreview}>
+                      {theme.isPremium && !isPremiumUser && (
+                        <View style={styles.lockOverlay}>
+                          <MaterialCommunityIcons name="crown" size={24} color="#FFA000" />
+                        </View>
+                      )}
+                    </LinearGradient>
                     <Text style={styles.themeName}>{theme.name}</Text>
                     {selectedTheme === theme.id && (
                       <View style={styles.checkmark}>
@@ -70,7 +99,7 @@ const AppearanceScreen: React.FC = () => {
             {/* Display Options */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>خيارات العرض</Text>
-              
+
               <View style={styles.optionItem}>
                 <View style={styles.optionInfo}>
                   <Text style={styles.optionTitle}>الوضع الداكن</Text>
@@ -208,6 +237,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
     flex: 1,
     textAlign: 'right',
+  },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
   },
 });
 

@@ -1,0 +1,1219 @@
+     1	import React, { useState, useRef, useEffect } from 'react';
+     2	import {
+     3	  View,
+     4	  Text,
+     5	  StyleSheet,
+     6	  Modal,
+     7	  TouchableOpacity,
+     8	  TextInput,
+     9	  FlatList,
+    10	  KeyboardAvoidingView,
+    11	  Platform,
+    12	  Image,
+    13	  Alert,
+    14	  PermissionsAndroid,
+    15	  TouchableWithoutFeedback,
+    16	  Dimensions,
+    17	} from 'react-native';
+    18	import HorizontalLoader from '../ui/HorizontalLoader';
+    19	import { SafeAreaView } from 'react-native-safe-area-context';
+    20	import LinearGradient from 'react-native-linear-gradient';
+    21	import Icon from 'react-native-vector-icons/Ionicons';
+    22	import { Swipeable } from 'react-native-gesture-handler';
+    23	import { launchImageLibrary } from 'react-native-image-picker';
+    24	import RNFS from 'react-native-fs';
+    25	import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../../../theme';
+    26	import { useGroupChat, ChatMessage } from '../../hooks/useGroupChat';
+    27	import { useToast } from '../../providers/ToastProvider';
+    28	import { useBackground } from '../../providers/BackgroundProvider';
+    29	
+    30	interface GroupChatWindowProps {
+    31	  visible: boolean;
+    32	  onClose: () => void;
+    33	  groupId: string;
+    34	  groupName: string;
+    35	  currentUserId: string;
+    36	}
+    37	
+    38	const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
+    39	  visible,
+    40	  onClose,
+    41	  groupId,
+    42	  groupName,
+    43	  currentUserId,
+    44	}) => {
+    45	  const [inputText, setInputText] = useState('');
+    46	  const [sending, setSending] = useState(false);
+    47	  const [selectedImage, setSelectedImage] = useState<any>(null);
+    48	  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+    49	  const [viewingImage, setViewingImage] = useState<string | null>(null);
+    50	  const [downloading, setDownloading] = useState(false);
+    51	  const flatListRef = useRef<FlatList>(null);
+    52	  const shouldScrollToEnd = useRef(true);
+    53	  const isFirstLoad = useRef(true);
+    54	  const inputRef = useRef<TextInput>(null);
+    55	
+    56	  const { showToast } = useToast();
+    57	  const { selectedGradient } = useBackground();
+    58	
+    59	  const {
+    60	    messages,
+    61	    loading,
+    62	    error,
+    63	    sendMessage,
+    64	    toggleLike,
+    65	    loadMoreMessages,
+    66	    hasMore,
+    67	    deleteMessage,
+    68	    editMessage,
+    69	  } = useGroupChat(groupId, currentUserId);
+    70	
+    71	  // States for message actions
+    72	  const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null);
+    73	  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+    74	  const [isEditing, setIsEditing] = useState(false);
+    75	  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+    76	
+    77	  // إعادة تعيين الحالة عند فتح/إغلاق الشات
+    78	  useEffect(() => {
+    79	    if (visible) {
+    80	      shouldScrollToEnd.current = true;
+    81	      isFirstLoad.current = true;
+    82	      setReplyingTo(null);
+    83	      setSelectedMessage(null);
+    84	      setIsEditing(false);
+    85	      setEditingMessageId(null);
+    86	    }
+    87	  }, [visible]);
+    88	
+    89	  // التمرير للأسفل عند تغيير حجم المحتوى
+    90	  const handleContentSizeChange = () => {
+    91	    // في حالة inverted، الأسفل هو البداية (0)
+    92	  };
+    93	
+    94	  // عند وصول رسالة جديدة، التمرير التلقائي يعمل طبيعياً في inverted
+    95	  useEffect(() => {
+    96	    if (messages.length > 0) {
+    97	      const lastMessage = messages[0]; // الرسالة الأحدث هي الأولى في المصفوفة
+    98	      if (lastMessage.user_id === currentUserId) {
+    99	        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+   100	      }
+   101	    }
+   102	  }, [messages.length, currentUserId]);
+   103	
+   104	  // اختيار رسالة للرد عليها
+   105	  const handleReply = (message: ChatMessage) => {
+   106	    setReplyingTo(message);
+   107	    inputRef.current?.focus();
+   108	  };
+   109	
+   110	  // إلغاء الرد
+   111	  const cancelReply = () => {
+   112	    setReplyingTo(null);
+   113	  };
+   114	
+   115	  // الحصول على اسم المرسل للرسالة المردود عليها
+   116	  const getReplyDisplayName = (message: ChatMessage) => {
+   117	    if (message.user_id === currentUserId) return 'أنت';
+   118	    if (message.user?.full_name) return message.user.full_name;
+   119	    if (message.user?.email) return message.user.email.split('@')[0];
+   120	    return 'مستخدم';
+   121	  };
+   122	
+   123	  // اختيار صورة
+   124	  const handlePickImage = async () => {
+   125	    const result = await launchImageLibrary({
+   126	      mediaType: 'photo',
+   127	      quality: 0.4, // جودة منخفضة للدردشة لتقليل الحجم جداً (من 0.5 إلى 0.4)
+   128	      maxWidth: 800, // تقليل العرض الأقصى لصور الدردشة (من 1024 إلى 800)
+   129	      maxHeight: 800, // تقليل الارتفاع الأقصى لصور الدردشة
+   130	      includeBase64: true,
+   131	    });
+   132	
+   133	    if (result.assets && result.assets.length > 0) {
+   134	      setSelectedImage(result.assets[0]);
+   135	    }
+   136	  };
+   137	
+   138	  // إرسال الرسالة
+   139	  const handleSend = async () => {
+   140	    // إذا كان الحقل فارغاً ولا توجد صورة، نرسل قلباً
+   141	    const messageToSend = inputText.trim() || (selectedImage ? '' : '❤️');
+   142	
+   143	    if (!messageToSend && !selectedImage && !sending) return;
+   144	
+   145	    setSending(true);
+   146	    try {
+   147	      if (isEditing && editingMessageId) {
+   148	        const success = await editMessage(editingMessageId, messageToSend);
+   149	        if (success) {
+   150	          setIsEditing(false);
+   151	          setEditingMessageId(null);
+   152	          setInputText('');
+   153	          showToast({ message: 'تم تعديل الرسالة', type: 'success' });
+   154	        } else {
+   155	          showToast({ message: 'فشل تعديل الرسالة', type: 'error' });
+   156	        }
+   157	      } else {
+   158	        const success = await sendMessage(
+   159	          messageToSend,
+   160	          selectedImage,
+   161	          replyingTo?.id
+   162	        );
+   163	
+   164	        if (success) {
+   165	          setInputText('');
+   166	          setSelectedImage(null);
+   167	          setReplyingTo(null);
+   168	          shouldScrollToEnd.current = true;
+   169	        }
+   170	      }
+   171	    } catch (err) {
+   172	      console.error('Send/Edit error:', err);
+   173	    } finally {
+   174	      setSending(false);
+   175	    }
+   176	  };
+   177	
+   178	  // Message Actions Handlers
+   179	  const handleLongPress = (event: any, message: ChatMessage) => {
+   180	    const { pageX, pageY } = event.nativeEvent;
+   181	    setMenuPosition({ x: pageX, y: pageY });
+   182	    setSelectedMessage(message);
+   183	  };
+   184	
+   185	  const handleActionReply = () => {
+   186	    if (selectedMessage) {
+   187	      handleReply(selectedMessage);
+   188	      setSelectedMessage(null);
+   189	    }
+   190	  };
+   191	
+   192	  const handleActionEdit = () => {
+   193	    if (selectedMessage) {
+   194	      setIsEditing(true);
+   195	      setEditingMessageId(selectedMessage.id);
+   196	      setInputText(selectedMessage.content);
+   197	      setSelectedMessage(null);
+   198	      inputRef.current?.focus();
+   199	    }
+   200	  };
+   201	
+   202	  const handleActionDelete = () => {
+   203	    if (selectedMessage) {
+   204	      Alert.alert(
+   205	        'حذف الرسالة',
+   206	        'هل أنت متأكد من رغبتك في حذف هذه الرسالة؟',
+   207	        [
+   208	          { text: 'إلغاء', style: 'cancel', onPress: () => setSelectedMessage(null) },
+   209	          {
+   210	            text: 'حذف',
+   211	            style: 'destructive',
+   212	            onPress: async () => {
+   213	              const success = await deleteMessage(selectedMessage.id);
+   214	              if (success) {
+   215	                showToast({ message: 'تم حذف الرسالة', type: 'success' });
+   216	              } else {
+   217	                showToast({ message: 'فشل حذف الرسالة', type: 'error' });
+   218	              }
+   219	              setSelectedMessage(null);
+   220	            }
+   221	          }
+   222	        ]
+   223	      );
+   224	    }
+   225	  };
+   226	
+   227	  const closeMenu = () => setSelectedMessage(null);
+   228	
+   229	  const handleActionLike = () => {
+   230	    if (selectedMessage) {
+   231	      toggleLike(selectedMessage.id);
+   232	      setSelectedMessage(null);
+   233	    }
+   234	  };
+   235	
+   236	  const cancelEdit = () => {
+   237	    setIsEditing(false);
+   238	    setEditingMessageId(null);
+   239	    setInputText('');
+   240	  };
+   241	
+   242	  const formatTime = (dateString: string) => {
+   243	    const date = new Date(dateString);
+   244	    const hours = date.getHours().toString().padStart(2, '0');
+   245	    const minutes = date.getMinutes().toString().padStart(2, '0');
+   246	    return `${hours}:${minutes}`;
+   247	  };
+   248	
+   249	  const formatDate = (dateString: string) => {
+   250	    const date = new Date(dateString);
+   251	    const today = new Date();
+   252	    const yesterday = new Date(today);
+   253	    yesterday.setDate(yesterday.getDate() - 1);
+   254	
+   255	    if (date.toDateString() === today.toDateString()) {
+   256	      return 'اليوم';
+   257	    } else if (date.toDateString() === yesterday.toDateString()) {
+   258	      return 'أمس';
+   259	    } else {
+   260	      return date.toLocaleDateString('ar-EG', {
+   261	        day: 'numeric',
+   262	        month: 'short',
+   263	      });
+   264	    }
+   265	  };
+   266	
+   267	  const getDisplayName = (message: ChatMessage) => {
+   268	    if (message.user?.full_name) return message.user.full_name;
+   269	    if (message.user?.email) return message.user.email.split('@')[0];
+   270	    return 'مستخدم';
+   271	  };
+   272	
+   273	  // وظيفة تحميل الصورة
+   274	  const handleDownloadImage = async (imageUrl: string) => {
+   275	    if (downloading) return;
+   276	
+   277	    try {
+   278	      if (Platform.OS === 'android') {
+   279	        const granted = await PermissionsAndroid.request(
+   280	          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+   281	          {
+   282	            title: 'صلاحية التخزين',
+   283	            message: 'نحتاج لصلاحية التخزين لتحميل الصورة على هاتفك',
+   284	            buttonNeutral: 'اسألني لاحقاً',
+   285	            buttonNegative: 'إلغاء',
+   286	            buttonPositive: 'موافق',
+   287	          }
+   288	        );
+   289	        // في أندرويد 10 وما فوق، لا نحتاج دائماً لهذه الصلاحية للتحميل في المجلدات العامة
+   290	        // ولكن للتبسيط سنكتفي بالتحقق أو المتابعة
+   291	      }
+   292	
+   293	      setDownloading(true);
+   294	      const fileName = `Momtn_${Date.now()}.jpg`;
+   295	      const downloadPath = Platform.OS === 'ios'
+   296	        ? `${RNFS.DocumentDirectoryPath}/${fileName}`
+   297	        : `${RNFS.ExternalStorageDirectoryPath}/Download/${fileName}`;
+   298	
+   299	      const downloadResult = await RNFS.downloadFile({
+   300	        fromUrl: imageUrl,
+   301	        toFile: downloadPath,
+   302	      }).promise;
+   303	
+   304	      if (downloadResult.statusCode === 200) {
+   305	        // إخبار النظام بوجود ملف جديد ليظهر في المعرض (أندرويد فقط)
+   306	        if (Platform.OS === 'android') {
+   307	          await RNFS.scanFile(downloadPath);
+   308	        }
+   309	        Alert.alert('تم التحميل', `تم حفظ الصورة في مجلد التحميلات`);
+   310	      } else {
+   311	        throw new Error('فشل التحميل من السيرفر');
+   312	      }
+   313	    } catch (err) {
+   314	      console.error('Download error:', err);
+   315	      Alert.alert('خطأ', 'فشل تحميل الصورة، يرجى المحاولة مرة أخرى');
+   316	    } finally {
+   317	      setDownloading(false);
+   318	    }
+   319	  };
+   320	
+   321	  const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
+   322	    const isMe = item.user_id === currentUserId;
+   323	    const hasLiked = item.likes?.includes(currentUserId) || false;
+   324	    const showDate = index === 0 ||
+   325	      new Date(item.created_at).toDateString() !== new Date(messages[index - 1].created_at).toDateString();
+   326	
+   327	    return (
+   328	      <View key={item.id}>
+   329	        {showDate && (
+   330	          <View style={styles.dateSeparator}>
+   331	            <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
+   332	          </View>
+   333	        )}
+   334	
+   335	        <View style={[
+   336	          styles.messageRow,
+   337	          isMe ? styles.myMessageRow : styles.otherMessageRow
+   338	        ]}>
+   339	          {!isMe && (
+   340	            <View style={styles.avatarContainer}>
+   341	              {item.user?.avatar_url ? (
+   342	                <Image
+   343	                  source={{ uri: item.user.avatar_url }}
+   344	                  style={styles.avatarImage}
+   345	                />
+   346	              ) : (
+   347	                <View style={[styles.avatar, { backgroundColor: Colors.primary }]}>
+   348	                  <Text style={styles.avatarText}>
+   349	                    {getDisplayName(item).charAt(0).toUpperCase()}
+   350	                  </Text>
+   351	                </View>
+   352	              )}
+   353	            </View>
+   354	          )}
+   355	
+   356	          <View style={[
+   357	            styles.messageBubbleWrapper,
+   358	            isMe ? styles.myMessageWrapper : styles.otherMessageWrapper
+   359	          ]}>
+   360	            {!isMe && (
+   361	              <Text style={styles.senderName}>{getDisplayName(item)}</Text>
+   362	            )}
+   363	
+   364	            <Swipeable
+   365	              ref={(ref) => {
+   366	                if (ref && !(item as any).swipeableRef) {
+   367	                  (item as any).swipeableRef = ref;
+   368	                }
+   369	              }}
+   370	              friction={2}
+   371	              rightThreshold={40}
+   372	              leftThreshold={40}
+   373	              renderLeftActions={!isMe ? (progress, dragX) => {
+   374	                return (
+   375	                  <View style={styles.swipeActionContainer}>
+   376	                    <Icon name="arrow-undo" size={20} color={Colors.primary} />
+   377	                  </View>
+   378	                );
+   379	              } : undefined}
+   380	              renderRightActions={isMe ? (progress, dragX) => {
+   381	                return (
+   382	                  <View style={styles.swipeActionContainer}>
+   383	                    <Icon name="arrow-undo" size={20} color={Colors.primary} />
+   384	                  </View>
+   385	                );
+   386	              } : undefined}
+   387	              onSwipeableWillOpen={() => {
+   388	                handleReply(item);
+   389	                // إغلاق السحب فوراً بعد تفعيل الرد
+   390	                setTimeout(() => {
+   391	                  (item as any).swipeableRef?.close();
+   392	                }, 100);
+   393	              }}
+   394	            >
+   395	              <TouchableOpacity
+   396	                activeOpacity={0.9}
+   397	                onLongPress={(e) => handleLongPress(e, item)}
+   398	                delayLongPress={400}
+   399	                style={[
+   400	                  styles.messageBubble,
+   401	                  isMe ? styles.myBubble : styles.otherBubble
+   402	                ]}
+   403	              >
+   404	                {/* عرض الرسالة المردود عليها داخل الفقاعة */}
+   405	                {item.replied_message && (
+   406	                  <View style={[
+   407	                    styles.repliedMessageContainer,
+   408	                    isMe ? styles.myRepliedContainer : styles.otherRepliedContainer
+   409	                  ]}>
+   410	                    <View style={isMe ? styles.myRepliedIndicator : styles.otherRepliedIndicator} />
+   411	                    <View style={styles.repliedContent}>
+   412	                      <Text style={styles.repliedSender} numberOfLines={1}>
+   413	                        {getReplyDisplayName(item.replied_message as any)}
+   414	                      </Text>
+   415	                      <Text style={styles.repliedText} numberOfLines={1}>
+   416	                        {item.replied_message.content}
+   417	                      </Text>
+   418	                    </View>
+   419	                  </View>
+   420	                )}
+   421	
+   422	                {/* عرض الصورة إذا وجدت */}
+   423	                {item.image_url ? (
+   424	                  <TouchableOpacity
+   425	                    activeOpacity={0.9}
+   426	                    onPress={() => {
+   427	                      if (item.image_url) {
+   428	                        setViewingImage(item.image_url);
+   429	                      }
+   430	                    }}
+   431	                    style={styles.imageContainer}
+   432	                  >
+   433	                    <Image
+   434	                      source={{ uri: item.image_url }}
+   435	                      style={styles.messageImage}
+   436	                      resizeMode="cover"
+   437	                      onLoad={() => console.log('Image loaded successfully:', item.image_url)}
+   438	                      onError={(e) => console.log('Image load error:', e.nativeEvent.error, item.image_url)}
+   439	                    />
+   440	                  </TouchableOpacity>
+   441	                ) : null}
+   442	
+   443	                {item.content ? (
+   444	                  <Text style={[
+   445	                    styles.messageText,
+   446	                    isMe ? styles.myMessageText : styles.otherMessageText,
+   447	                    item.content === '❤️' && { fontSize: 45, lineHeight: 55, textAlign: 'center' }
+   448	                  ]}>
+   449	                    {item.content}
+   450	                  </Text>
+   451	                ) : null}
+   452	
+   453	                <View style={styles.messageFooter}>
+   454	                  <Text style={[
+   455	                    styles.messageTime,
+   456	                    isMe ? styles.myMessageTime : styles.otherMessageTime
+   457	                  ]}>
+   458	                    {formatTime(item.created_at)}
+   459	                  </Text>
+   460	                </View>
+   461	
+   462	                {/* زر التفاعل بالقلب - دائماً على اليسار */}
+   463	                <TouchableOpacity
+   464	                  style={[
+   465	                    styles.heartBadge,
+   466	                    (!hasLiked && (!item.likes || item.likes.length === 0)) && styles.heartBadgeInactive
+   467	                  ]}
+   468	                  onPress={() => toggleLike(item.id)}
+   469	                  activeOpacity={0.7}
+   470	                >
+   471	                  <Icon
+   472	                    name={hasLiked ? "heart" : "heart-outline"}
+   473	                    size={14}
+   474	                    color={hasLiked ? "#ea384c" : "rgba(255,255,255,0.2)"}
+   475	                  />
+   476	                  {(item.likes && item.likes.length > 0) && (
+   477	                    <Text style={styles.likeCount}>{item.likes.length}</Text>
+   478	                  )}
+   479	                </TouchableOpacity>
+   480	              </TouchableOpacity>
+   481	            </Swipeable>
+   482	          </View>
+   483	        </View>
+   484	      </View>
+   485	    );
+   486	  };
+   487	
+   488	  const renderEmptyState = () => (
+   489	    <View style={styles.emptyState}>
+   490	      {loading ? (
+   491	        <HorizontalLoader color={Colors.primary} width={150} />
+   492	      ) : (
+   493	        <>
+   494	          <Icon name="chatbubbles-outline" size={60} color={Colors.textMuted} />
+   495	          <Text style={styles.emptyStateText}>
+   496	            لا توجد رسائل بعد.. ابدأ المحادثة!
+   497	          </Text>
+   498	        </>
+   499	      )}
+   500	    </View>
+   501	  );
+   502	
+   503	  return (
+   504	    <Modal
+   505	      visible={visible}
+   506	      animationType="slide"
+   507	      onRequestClose={onClose}
+   508	    >
+   509	      <LinearGradient
+   510	        colors={selectedGradient.colors}
+   511	        style={styles.container}
+   512	      >
+   513	        <SafeAreaView style={styles.safeArea}>
+   514	          <KeyboardAvoidingView
+   515	            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+   516	            style={styles.keyboardView}
+   517	            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+   518	          >
+   519	            {/* Header */}
+   520	            <View style={styles.header}>
+   521	              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+   522	                <Icon name="close" size={24} color={Colors.textPrimary} />
+   523	              </TouchableOpacity>
+   524	
+   525	              <View style={styles.headerCenter}>
+   526	                <Text style={styles.headerTitle}>{groupName}</Text>
+   527	                <Text style={styles.headerSubtitle}>محادثة المجموعة</Text>
+   528	              </View>
+   529	
+   530	              <View style={{ width: 40 }} />
+   531	            </View>
+   532	
+   533	            {/* Messages List */}
+   534	            {loading && messages.length === 0 ? (
+   535	              <View style={styles.loadingContainer}>
+   536	                <HorizontalLoader color={Colors.primary} width={200} />
+   537	              </View>
+   538	            ) : (
+   539	              <FlatList
+   540	                ref={flatListRef}
+   541	                data={messages}
+   542	                renderItem={renderMessage}
+   543	                keyExtractor={(item) => item.id}
+   544	                inverted={true}
+   545	                contentContainerStyle={[
+   546	                  styles.listContent,
+   547	                  messages.length === 0 && styles.listContentEmpty
+   548	                ]}
+   549	                ListEmptyComponent={renderEmptyState}
+   550	                onEndReached={loadMoreMessages}
+   551	                onEndReachedThreshold={0.5}
+   552	                ListFooterComponent={
+   553	                  loading && messages.length > 0 ? (
+   554	                    <View style={{ paddingVertical: 10, alignItems: 'center' }}>
+   555	                      <HorizontalLoader color={Colors.primary} width={100} />
+   556	                    </View>
+   557	                  ) : (hasMore && messages.length > 0 ? (
+   558	                    <TouchableOpacity
+   559	                      style={styles.loadMoreButton}
+   560	                      onPress={loadMoreMessages}
+   561	                    >
+   562	                      <Text style={styles.loadMoreText}>تحميل رسائل أقدم</Text>
+   563	                    </TouchableOpacity>
+   564	                  ) : null)
+   565	                }
+   566	                showsVerticalScrollIndicator={false}
+   567	              />
+   568	            )}
+   569	
+   570	            {/* Error Message */}
+   571	            {error && (
+   572	              <View style={styles.errorContainer}>
+   573	                <Text style={styles.errorText}>{error}</Text>
+   574	              </View>
+   575	            )}
+   576	
+   577	            {/* Input Area */}
+   578	            <View style={styles.bottomSection}>
+   579	              {/* معاينة الصورة المختارة */}
+   580	              {selectedImage && (
+   581	                <View style={styles.imagePreviewContainer}>
+   582	                  <Image source={{ uri: selectedImage.uri }} style={styles.imagePreview} />
+   583	                  <TouchableOpacity
+   584	                    style={styles.removeImageButton}
+   585	                    onPress={() => setSelectedImage(null)}
+   586	                  >
+   587	                    <Icon name="close-circle" size={24} color={Colors.error} />
+   588	                  </TouchableOpacity>
+   589	                </View>
+   590	              )}
+   591	
+   592	              {/* شريط الرد المفعّل */}
+   593	              {replyingTo && (
+   594	                <View style={styles.replyBar}>
+   595	                  <View style={styles.replyBarIndicator} />
+   596	                  <View style={styles.replyBarContent}>
+   597	                    <Text style={styles.replyBarSender}>
+   598	                      الرد على {getReplyDisplayName(replyingTo)}
+   599	                    </Text>
+   600	                    <Text style={styles.replyBarText} numberOfLines={1}>
+   601	                      {replyingTo.content}
+   602	                    </Text>
+   603	                  </View>
+   604	                  <TouchableOpacity onPress={cancelReply} style={styles.cancelReplyButton}>
+   605	                    <Icon name="close-circle" size={20} color={Colors.textMuted} />
+   606	                  </TouchableOpacity>
+   607	                </View>
+   608	              )}
+   609	
+   610	              <View style={styles.inputContainer}>
+   611	                <TouchableOpacity
+   612	                  style={[styles.sendButton, sending && styles.sendButtonDisabled]}
+   613	                  onPress={handleSend}
+   614	                  disabled={sending}
+   615	                >
+   616	                  {sending ? (
+   617	                    <HorizontalLoader color={Colors.textPrimary} width={30} />
+   618	                  ) : (
+   619	                    <Icon
+   620	                      name={inputText.trim() || selectedImage ? "send" : "heart"}
+   621	                      size={inputText.trim() || selectedImage ? 20 : 24}
+   622	                      color={Colors.textPrimary}
+   623	                      style={!(inputText.trim() || selectedImage) && { transform: [{ scale: 1.1 }] }}
+   624	                    />
+   625	                  )}
+   626	                </TouchableOpacity>
+   627	
+   628	                <TextInput
+   629	                  ref={inputRef}
+   630	                  style={styles.textInput}
+   631	                  value={inputText}
+   632	                  onChangeText={setInputText}
+   633	                  placeholder="اكتب رسالتك..."
+   634	                  placeholderTextColor={Colors.textMuted}
+   635	                  multiline
+   636	                  maxLength={1000}
+   637	                  textAlign="right"
+   638	                />
+   639	
+   640	                <TouchableOpacity
+   641	                  style={styles.imagePickerButton}
+   642	                  onPress={handlePickImage}
+   643	                  disabled={sending}
+   644	                >
+   645	                  <Icon name="image" size={26} color="#00E676" />
+   646	                </TouchableOpacity>
+   647	              </View>
+   648	            </View>
+   649	          </KeyboardAvoidingView>
+   650	        </SafeAreaView>
+   651	      </LinearGradient>
+   652	
+   653	      {/* Context Menu Modal */}
+   654	      <Modal
+   655	        visible={!!selectedMessage}
+   656	        transparent={true}
+   657	        animationType="fade"
+   658	        onRequestClose={closeMenu}
+   659	      >
+   660	        <TouchableWithoutFeedback onPress={closeMenu}>
+   661	          <View style={styles.menuOverlay}>
+   662	            <View
+   663	              style={[
+   664	                styles.contextMenu,
+   665	                {
+   666	                  top: menuPosition.y - 120 > 50 ? menuPosition.y - 120 : menuPosition.y + 20,
+   667	                  left: menuPosition.x > Dimensions.get('window').width / 2 ? undefined : menuPosition.x,
+   668	                  right: menuPosition.x > Dimensions.get('window').width / 2 ? Dimensions.get('window').width - menuPosition.x : undefined,
+   669	                }
+   670	              ]}
+   671	            >
+   672	              <TouchableOpacity style={styles.menuItem} onPress={handleActionReply}>
+   673	                <Text style={styles.menuItemText}>رد</Text>
+   674	                <Icon name="arrow-undo-outline" size={18} color={Colors.textPrimary} />
+   675	              </TouchableOpacity>
+   676	
+   677	              <View style={styles.menuDivider} />
+   678	              <TouchableOpacity style={styles.menuItem} onPress={handleActionLike}>
+   679	                <Text style={styles.menuItemText}>إعجاب</Text>
+   680	                <Icon name="heart-outline" size={18} color="#ea384c" />
+   681	              </TouchableOpacity>
+   682	
+   683	              {selectedMessage?.user_id === currentUserId && (
+   684	                <>
+   685	                  <View style={styles.menuDivider} />
+   686	                  <TouchableOpacity style={styles.menuItem} onPress={handleActionEdit}>
+   687	                    <Text style={styles.menuItemText}>تعديل</Text>
+   688	                    <Icon name="create-outline" size={18} color={Colors.textPrimary} />
+   689	                  </TouchableOpacity>
+   690	
+   691	                  <View style={styles.menuDivider} />
+   692	                  <TouchableOpacity style={styles.menuItem} onPress={handleActionDelete}>
+   693	                    <Text style={[styles.menuItemText, { color: Colors.error }]}>حذف</Text>
+   694	                    <Icon name="trash-outline" size={18} color={Colors.error} />
+   695	                  </TouchableOpacity>
+   696	                </>
+   697	              )}
+   698	            </View>
+   699	          </View>
+   700	        </TouchableWithoutFeedback>
+   701	      </Modal>
+   702	
+   703	      {/* مودال عرض الصورة بملء الشاشة */}
+   704	      <Modal
+   705	        visible={!!viewingImage}
+   706	        transparent={true}
+   707	        animationType="fade"
+   708	        onRequestClose={() => setViewingImage(null)}
+   709	      >
+   710	        <View style={styles.fullScreenContainer}>
+   711	          <TouchableOpacity
+   712	            style={styles.fullScreenClose}
+   713	            onPress={() => setViewingImage(null)}
+   714	          >
+   715	            <Icon name="close" size={30} color="#fff" />
+   716	          </TouchableOpacity>
+   717	
+   718	          {viewingImage && (
+   719	            <Image
+   720	              source={{ uri: viewingImage }}
+   721	              style={styles.fullScreenImage}
+   722	              resizeMode="contain"
+   723	            />
+   724	          )}
+   725	
+   726	          <TouchableOpacity
+   727	            style={styles.downloadButton}
+   728	            onPress={() => viewingImage && handleDownloadImage(viewingImage)}
+   729	            disabled={downloading}
+   730	          >
+   731	            {downloading ? (
+   732	              <HorizontalLoader color="#fff" width={30} />
+   733	            ) : (
+   734	              <>
+   735	                <Icon name="download-outline" size={24} color="#fff" />
+   736	                <Text style={styles.downloadButtonText}>تحميل</Text>
+   737	              </>
+   738	            )}
+   739	          </TouchableOpacity>
+   740	        </View>
+   741	      </Modal>
+   742	    </Modal>
+   743	  );
+   744	};
+   745	
+   746	const styles = StyleSheet.create({
+   747	  container: {
+   748	    flex: 1,
+   749	  },
+   750	  safeArea: {
+   751	    flex: 1,
+   752	  },
+   753	  keyboardView: {
+   754	    flex: 1,
+   755	  },
+   756	
+   757	  // Header
+   758	  header: {
+   759	    flexDirection: 'row',
+   760	    alignItems: 'center',
+   761	    justifyContent: 'space-between',
+   762	    paddingHorizontal: Spacing.lg,
+   763	    paddingVertical: Spacing.md,
+   764	    borderBottomWidth: 1,
+   765	    borderBottomColor: 'rgba(255,255,255,0.05)',
+   766	    backgroundColor: 'rgba(0,0,0,0.3)',
+   767	  },
+   768	  closeButton: {
+   769	    width: 36,
+   770	    height: 36,
+   771	    borderRadius: 18,
+   772	    backgroundColor: 'rgba(255,255,255,0.1)',
+   773	    justifyContent: 'center',
+   774	    alignItems: 'center',
+   775	  },
+   776	  headerCenter: {
+   777	    flex: 1,
+   778	    alignItems: 'center',
+   779	  },
+   780	  headerTitle: {
+   781	    color: '#fff',
+   782	    fontSize: 18,
+   783	    fontWeight: 'bold',
+   784	  },
+   785	  headerSubtitle: {
+   786	    color: 'rgba(255,255,255,0.5)',
+   787	    fontSize: 12,
+   788	  },
+   789	
+   790	  // List
+   791	  listContent: {
+   792	    paddingVertical: Spacing.xl,
+   793	  },
+   794	  listContentEmpty: {
+   795	    flex: 1,
+   796	    justifyContent: 'center',
+   797	  },
+   798	  loadingContainer: {
+   799	    flex: 1,
+   800	    justifyContent: 'center',
+   801	    alignItems: 'center',
+   802	  },
+   803	  messageImage: {
+   804	    width: 200,
+   805	    height: 200,
+   806	    borderRadius: 12,
+   807	    backgroundColor: 'rgba(255,255,255,0.05)',
+   808	  },
+   809	  imageContainer: {
+   810	    marginBottom: 8,
+   811	    borderRadius: 12,
+   812	    overflow: 'hidden',
+   813	  },
+   814	  imagePickerButton: {
+   815	    width: 44,
+   816	    height: 44,
+   817	    justifyContent: 'center',
+   818	    alignItems: 'center',
+   819	    marginRight: 8,
+   820	    backgroundColor: 'rgba(255,255,255,0.15)',
+   821	    borderRadius: 22,
+   822	    zIndex: 999,
+   823	  },
+   824	  imagePreviewContainer: {
+   825	    padding: 10,
+   826	    flexDirection: 'row',
+   827	    alignItems: 'center',
+   828	    backgroundColor: 'rgba(255,255,255,0.05)',
+   829	    borderTopWidth: 1,
+   830	    borderTopColor: 'rgba(255,255,255,0.05)',
+   831	  },
+   832	  imagePreview: {
+   833	    width: 60,
+   834	    height: 60,
+   835	    borderRadius: 8,
+   836	  },
+   837	  removeImageButton: {
+   838	    marginLeft: 10,
+   839	  },
+   840	  emptyState: {
+   841	    alignItems: 'center',
+   842	    justifyContent: 'center',
+   843	    padding: Spacing.xxl,
+   844	  },
+   845	  emptyStateText: {
+   846	    color: Colors.textMuted,
+   847	    marginTop: Spacing.md,
+   848	    fontSize: Typography.body.fontSize,
+   849	    textAlign: 'center',
+   850	  },
+   851	
+   852	  // Date Separator
+   853	  dateSeparator: {
+   854	    alignItems: 'center',
+   855	    marginVertical: Spacing.md,
+   856	  },
+   857	  dateText: {
+   858	    color: Colors.textMuted,
+   859	    fontSize: Typography.tiny.fontSize,
+   860	    backgroundColor: 'rgba(0,0,0,0.2)',
+   861	    paddingHorizontal: Spacing.md,
+   862	    paddingVertical: 2,
+   863	    borderRadius: BorderRadius.full,
+   864	  },
+   865	
+   866	  // Messages
+   867	  messageRow: {
+   868	    flexDirection: 'row',
+   869	    marginBottom: Spacing.lg,
+   870	    paddingHorizontal: Spacing.sm,
+   871	    width: '100%',
+   872	  },
+   873	  myMessageRow: {
+   874	    justifyContent: 'flex-start',
+   875	    // In Arabic: My messages are usually on the RIGHT.
+   876	    flexDirection: 'row-reverse',
+   877	  },
+   878	  otherMessageRow: {
+   879	    flexDirection: 'row',
+   880	  },
+   881	
+   882	  avatarContainer: {
+   883	    marginRight: Spacing.sm,
+   884	    justifyContent: 'flex-end',
+   885	    marginBottom: 2,
+   886	  },
+   887	  avatar: {
+   888	    width: 36,
+   889	    height: 36,
+   890	    borderRadius: 18,
+   891	    justifyContent: 'center',
+   892	    alignItems: 'center',
+   893	    ...Shadows.sm,
+   894	    borderWidth: 1.5,
+   895	    borderColor: 'rgba(255,255,255,0.2)',
+   896	  },
+   897	  avatarImage: {
+   898	    width: 36,
+   899	    height: 36,
+   900	    borderRadius: 18,
+   901	    borderWidth: 1.5,
+   902	    borderColor: 'rgba(255,255,255,0.2)',
+   903	  },
+   904	  avatarText: {
+   905	    color: Colors.textPrimary,
+   906	    fontSize: 14,
+   907	    fontWeight: 'bold',
+   908	  },
+   909	
+   910	  messageBubbleWrapper: {
+   911	    maxWidth: '80%',
+   912	    position: 'relative',
+   913	  },
+   914	  myMessageWrapper: {
+   915	    alignItems: 'flex-end',
+   916	  },
+   917	  otherMessageWrapper: {
+   918	    alignItems: 'flex-start',
+   919	  },
+   920	  fullScreenContainer: {
+   921	    flex: 1,
+   922	    backgroundColor: 'rgba(0,0,0,0.95)',
+   923	    justifyContent: 'center',
+   924	    alignItems: 'center',
+   925	  },
+   926	  fullScreenImage: {
+   927	    width: '100%',
+   928	    height: '80%',
+   929	  },
+   930	  fullScreenClose: {
+   931	    position: 'absolute',
+   932	    top: 40,
+   933	    right: 20,
+   934	    zIndex: 10,
+   935	    padding: 10,
+   936	  },
+   937	  downloadButton: {
+   938	    position: 'absolute',
+   939	    bottom: 40,
+   940	    flexDirection: 'row',
+   941	    alignItems: 'center',
+   942	    backgroundColor: 'rgba(255,255,255,0.2)',
+   943	    paddingHorizontal: 20,
+   944	    paddingVertical: 10,
+   945	    borderRadius: 25,
+   946	  },
+   947	  downloadButtonText: {
+   948	    color: '#fff',
+   949	    marginLeft: 8,
+   950	    fontSize: 16,
+   951	    fontWeight: 'bold',
+   952	  },
+   953	
+   954	  senderName: {
+   955	    fontSize: 12,
+   956	    color: 'rgba(255,255,255,0.6)',
+   957	    marginBottom: 4,
+   958	    marginHorizontal: 8,
+   959	    fontWeight: '600',
+   960	  },
+   961	
+   962	  messageBubble: {
+   963	    paddingHorizontal: Spacing.lg,
+   964	    paddingTop: Spacing.md,
+   965	    paddingBottom: Spacing.lg, // زيادة المسافة السفلية للقلب
+   966	    borderRadius: 20,
+   967	    minWidth: 70, // زيادة العرض الأدنى قليلاً
+   968	    ...Shadows.md,
+   969	  },
+   970	  myBubble: {
+   971	    backgroundColor: Colors.primary,
+   972	    borderBottomRightRadius: 4,
+   973	    borderBottomLeftRadius: 20,
+   974	  },
+   975	  otherBubble: {
+   976	    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+   977	    borderBottomLeftRadius: 4,
+   978	    borderBottomRightRadius: 20,
+   979	    borderWidth: 1,
+   980	    borderColor: 'rgba(255, 255, 255, 0.05)',
+   981	  },
+   982	
+   983	  // Replied Message inside bubble
+   984	  repliedMessageContainer: {
+   985	    flexDirection: 'row',
+   986	    backgroundColor: 'rgba(0,0,0,0.15)',
+   987	    borderRadius: 8,
+   988	    marginBottom: 8,
+   989	    overflow: 'hidden',
+   990	    minWidth: 120,
+   991	  },
+   992	  myRepliedContainer: {
+   993	    backgroundColor: 'rgba(0,0,0,0.2)',
+   994	  },
+   995	  otherRepliedContainer: {
+   996	    backgroundColor: 'rgba(255,255,255,0.08)',
+   997	  },
+   998	  myRepliedIndicator: {
+   999	    width: 4,
+  1000	    backgroundColor: '#fff',
+  1001	  },
+  1002	  otherRepliedIndicator: {
+  1003	    width: 4,
+  1004	    backgroundColor: Colors.primary,
+  1005	  },
+  1006	  repliedContent: {
+  1007	    padding: 6,
+  1008	    flex: 1,
+  1009	  },
+  1010	  repliedSender: {
+  1011	    fontSize: 11,
+  1012	    fontWeight: 'bold',
+  1013	    color: '#fff',
+  1014	    marginBottom: 2,
+  1015	    textAlign: 'right',
+  1016	  },
+  1017	  repliedText: {
+  1018	    fontSize: 13,
+  1019	    color: 'rgba(255,255,255,0.7)',
+  1020	    textAlign: 'right',
+  1021	  },
+  1022	
+  1023	  swipeActionContainer: {
+  1024	    width: 50,
+  1025	    justifyContent: 'center',
+  1026	    alignItems: 'center',
+  1027	  },
+  1028	
+  1029	  // Bottom Section & Reply Bar
+  1030	  bottomSection: {
+  1031	    backgroundColor: 'rgba(0,0,0,0.4)',
+  1032	    borderTopWidth: 1,
+  1033	    borderTopColor: 'rgba(255,255,255,0.05)',
+  1034	  },
+  1035	  replyBar: {
+  1036	    flexDirection: 'row',
+  1037	    alignItems: 'center',
+  1038	    paddingHorizontal: Spacing.md,
+  1039	    paddingVertical: 8,
+  1040	    backgroundColor: 'rgba(255,255,255,0.05)',
+  1041	    borderLeftWidth: 0,
+  1042	  },
+  1043	  replyBarIndicator: {
+  1044	    width: 4,
+  1045	    height: '100%',
+  1046	    backgroundColor: Colors.primary,
+  1047	    borderRadius: 2,
+  1048	  },
+  1049	  replyBarContent: {
+  1050	    flex: 1,
+  1051	    paddingHorizontal: 15,
+  1052	  },
+  1053	  replyBarSender: {
+  1054	    fontSize: 12,
+  1055	    fontWeight: 'bold',
+  1056	    color: Colors.primary,
+  1057	    textAlign: 'right',
+  1058	  },
+  1059	  replyBarText: {
+  1060	    fontSize: 13,
+  1061	    color: Colors.textMuted,
+  1062	    textAlign: 'right',
+  1063	  },
+  1064	  cancelReplyButton: {
+  1065	    padding: 5,
+  1066	  },
+  1067	
+  1068	  messageText: {
+  1069	    fontSize: 16,
+  1070	    lineHeight: 22,
+  1071	  },
+  1072	  myMessageText: {
+  1073	    color: '#fff',
+  1074	    textAlign: 'right',
+  1075	  },
+  1076	  otherMessageText: {
+  1077	    color: '#fff',
+  1078	    textAlign: 'right',
+  1079	  },
+  1080	
+  1081	  messageFooter: {
+  1082	    flexDirection: 'row',
+  1083	    justifyContent: 'flex-end',
+  1084	    alignItems: 'center',
+  1085	    marginTop: 4,
+  1086	  },
+  1087	  messageTime: {
+  1088	    fontSize: 10,
+  1089	    opacity: 0.6,
+  1090	  },
+  1091	  myMessageTime: {
+  1092	    color: '#fff',
+  1093	  },
+  1094	  otherMessageTime: {
+  1095	    color: '#fff',
+  1096	  },
+  1097	
+  1098	  // Likes
+  1099	  heartBadge: {
+  1100	    position: 'absolute',
+  1101	    bottom: 4,
+  1102	    left: 8,
+  1103	    flexDirection: 'row',
+  1104	    alignItems: 'center',
+  1105	    backgroundColor: 'rgba(0,0,0,0.3)',
+  1106	    paddingHorizontal: 5,
+  1107	    paddingVertical: 1,
+  1108	    borderRadius: 10,
+  1109	    minWidth: 24,
+  1110	    justifyContent: 'center',
+  1111	  },
+  1112	  heartBadgeInactive: {
+  1113	    backgroundColor: 'transparent',
+  1114	    borderWidth: 0,
+  1115	    elevation: 0,
+  1116	    shadowOpacity: 0,
+  1117	  },
+  1118	  likeCount: {
+  1119	    fontSize: 10,
+  1120	    color: '#fff',
+  1121	    marginLeft: 2,
+  1122	    fontWeight: 'bold',
+  1123	  },
+  1124	
+  1125	  // Load More
+  1126	  loadMoreButton: {
+  1127	    alignItems: 'center',
+  1128	    paddingVertical: Spacing.md,
+  1129	  },
+  1130	  loadMoreText: {
+  1131	    color: Colors.textIndigo,
+  1132	    fontSize: Typography.bodySmall.fontSize,
+  1133	  },
+  1134	
+  1135	  // Error
+  1136	  errorContainer: {
+  1137	    backgroundColor: Colors.errorBg,
+  1138	    paddingHorizontal: Spacing.lg,
+  1139	    paddingVertical: Spacing.sm,
+  1140	    marginHorizontal: Spacing.lg,
+  1141	    borderRadius: BorderRadius.sm,
+  1142	    marginBottom: Spacing.sm,
+  1143	  },
+  1144	  errorText: {
+  1145	    color: Colors.textPrimary,
+  1146	    fontSize: Typography.bodySmall.fontSize,
+  1147	    textAlign: 'center',
+  1148	  },
+  1149	
+  1150	  // Input Area
+  1151	  inputContainer: {
+  1152	    flexDirection: 'row',
+  1153	    alignItems: 'center',
+  1154	    paddingHorizontal: Spacing.md,
+  1155	    paddingVertical: Spacing.sm,
+  1156	    backgroundColor: 'rgba(0,0,0,0.2)',
+  1157	    minHeight: 60,
+  1158	  },
+  1159	  textInput: {
+  1160	    flex: 1,
+  1161	    backgroundColor: 'rgba(255,255,255,0.08)',
+  1162	    borderRadius: 24,
+  1163	    paddingHorizontal: Spacing.lg,
+  1164	    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+  1165	    color: '#fff',
+  1166	    fontSize: 16,
+  1167	    maxHeight: 120,
+  1168	    marginHorizontal: Spacing.sm,
+  1169	    textAlign: 'right',
+  1170	  },
+  1171	  sendButton: {
+  1172	    width: 48,
+  1173	    height: 48,
+  1174	    borderRadius: 24,
+  1175	    backgroundColor: Colors.primary,
+  1176	    justifyContent: 'center',
+  1177	    alignItems: 'center',
+  1178	    ...Shadows.md,
+  1179	  },
+  1180	  sendButtonDisabled: {
+  1181	    opacity: 0.5,
+  1182	    backgroundColor: '#666',
+  1183	  },
+  1184	  // Context Menu
+  1185	  menuOverlay: {
+  1186	    flex: 1,
+  1187	    backgroundColor: 'rgba(0,0,0,0.4)',
+  1188	  },
+  1189	  contextMenu: {
+  1190	    position: 'absolute',
+  1191	    backgroundColor: '#2d1b24',
+  1192	    borderRadius: 12,
+  1193	    padding: 5,
+  1194	    minWidth: 150,
+  1195	    ...Shadows.md,
+  1196	    borderWidth: 1,
+  1197	    borderColor: 'rgba(255,255,255,0.1)',
+  1198	  },
+  1199	  menuItem: {
+  1200	    flexDirection: 'row',
+  1201	    alignItems: 'center',
+  1202	    justifyContent: 'flex-end',
+  1203	    paddingVertical: 12,
+  1204	    paddingHorizontal: 15,
+  1205	  },
+  1206	  menuItemText: {
+  1207	    color: Colors.textPrimary,
+  1208	    fontSize: 16,
+  1209	    marginRight: 10,
+  1210	    fontWeight: '500',
+  1211	  },
+  1212	  menuDivider: {
+  1213	    height: 1,
+  1214	    backgroundColor: 'rgba(255,255,255,0.1)',
+  1215	    marginHorizontal: 10,
+  1216	  },
+  1217	});
+  1218	
+  1219	export default GroupChatWindow;

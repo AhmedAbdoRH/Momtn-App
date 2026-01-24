@@ -14,6 +14,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useToast } from '../providers/ToastProvider';
+import { useBackground } from '../providers/BackgroundProvider';
 import HeartLogo from '../../components/HeartLogo';
 import HorizontalLoader from '../components/ui/HorizontalLoader';
 import {
@@ -26,6 +27,7 @@ const AuthScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { signInWithGoogle } = useAuth();
   const { showToast } = useToast();
+  const { selectedGradient } = useBackground();
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -57,7 +59,7 @@ const AuthScreen: React.FC = () => {
     >
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <LinearGradient
-        colors={[Colors.authGradientStart, Colors.authGradientMiddle, Colors.authGradientEnd]}
+        colors={selectedGradient.colors}
         style={styles.gradient}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>

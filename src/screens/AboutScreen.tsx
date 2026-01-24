@@ -13,9 +13,11 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useBackground } from '../providers/BackgroundProvider';
 
 const AboutScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { selectedGradient } = useBackground();
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch(() => { });
@@ -28,7 +30,7 @@ const AboutScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#14090e', '#4a1e34']} style={styles.gradient}>
+      <LinearGradient colors={selectedGradient.colors} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.header}>

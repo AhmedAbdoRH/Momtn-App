@@ -12,10 +12,12 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useBackground } from '../providers/BackgroundProvider';
 
 const NotificationsScreen: React.FC = () => {
   const navigation = useNavigation();
-  
+  const { selectedGradient } = useBackground();
+
   const [pushEnabled, setPushEnabled] = useState(true);
   const [newPhotos, setNewPhotos] = useState(true);
   const [comments, setComments] = useState(true);
@@ -26,7 +28,7 @@ const NotificationsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#14090e', '#4a1e34']} style={styles.gradient}>
+      <LinearGradient colors={selectedGradient.colors} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.header}>
@@ -55,7 +57,7 @@ const NotificationsScreen: React.FC = () => {
             {/* Notification Types */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>أنواع الإشعارات</Text>
-              
+
               <View style={[styles.optionItem, !pushEnabled && styles.optionDisabled]}>
                 <View style={styles.optionInfo}>
                   <Icon name="image-outline" size={20} color="rgba(255,255,255,0.7)" />

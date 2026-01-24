@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { Colors, Spacing, Typography, BorderRadius } from '../../theme';
 import { useToast } from '../providers/ToastProvider';
+import { useBackground } from '../providers/BackgroundProvider';
+import LinearGradient from 'react-native-linear-gradient';
 
 interface CreateNewDialogProps {
   visible: boolean;
@@ -26,6 +28,7 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
 }) => {
   const [content, setContent] = useState('');
   const { showToast } = useToast();
+  const { selectedGradient } = useBackground();
 
   const handleSubmit = () => {
     if (content.trim().length === 0) {
@@ -52,39 +55,44 @@ const CreateNewDialog: React.FC<CreateNewDialogProps> = ({
       transparent={Platform.OS !== 'ios'}
     >
       <View style={Platform.OS === 'ios' ? styles.iosContainer : styles.androidOverlay}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleClose}>
-              <Text style={styles.cancelButton}>إلغاء</Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.title}>لحظة جديدة</Text>
-            
-            <TouchableOpacity onPress={handleSubmit}>
-              <Text style={styles.submitButton}>حفظ</Text>
-            </TouchableOpacity>
-          </View>
+        <LinearGradient
+          colors={selectedGradient.colors}
+          style={styles.container}
+        >
+          <SafeAreaView style={styles.contentWrapper}>
+            <View style={styles.header}>
+              <TouchableOpacity onPress={handleClose}>
+                <Text style={styles.cancelButton}>إلغاء</Text>
+              </TouchableOpacity>
 
-          <View style={styles.content}>
-            <Text style={styles.label}>شاركنا لحظتك الجميلة</Text>
-            
-            <TextInput
-              style={styles.textInput}
-              placeholder="اكتب عن لحظتك السعيدة..."
-              placeholderTextColor={Colors.textMuted}
-              value={content}
-              onChangeText={setContent}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              autoFocus
-            />
-            
-            <Text style={styles.hint}>
-              شارك اللحظات الجميلة والنعم في حياتك
-            </Text>
-          </View>
-        </SafeAreaView>
+              <Text style={styles.title}>لحظة جديدة</Text>
+
+              <TouchableOpacity onPress={handleSubmit}>
+                <Text style={styles.submitButton}>حفظ</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.content}>
+              <Text style={styles.label}>شاركنا لحظتك الجميلة</Text>
+
+              <TextInput
+                style={styles.textInput}
+                placeholder="اكتب عن لحظتك السعيدة..."
+                placeholderTextColor={Colors.textMuted}
+                value={content}
+                onChangeText={setContent}
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+                autoFocus
+              />
+
+              <Text style={styles.hint}>
+                شارك اللحظات الجميلة والنعم في حياتك
+              </Text>
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
       </View>
     </Modal>
   );
@@ -102,10 +110,12 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: Platform.OS === 'ios' ? Colors.authGradientStart : Colors.glassCard,
     borderTopLeftRadius: Platform.OS === 'android' ? BorderRadius.xxl : 0,
     borderTopRightRadius: Platform.OS === 'android' ? BorderRadius.xxl : 0,
     overflow: 'hidden',
+  },
+  contentWrapper: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

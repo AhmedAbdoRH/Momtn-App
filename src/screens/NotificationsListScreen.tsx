@@ -13,6 +13,7 @@ import HorizontalLoader from '../components/ui/HorizontalLoader';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useBackground } from '../providers/BackgroundProvider';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useNotifications } from '../hooks/useNotifications';
 import { AppNotification } from '../services/notifications';
@@ -20,6 +21,7 @@ import { NotificationNavigationService } from '../services/notificationNavigatio
 
 const NotificationsListScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { selectedGradient } = useBackground();
   const { user } = useAuth();
   const {
     notifications,
@@ -91,7 +93,7 @@ const NotificationsListScreen: React.FC = () => {
 
   const renderNotification = ({ item }: { item: AppNotification }) => {
     const icon = getNotificationIcon(item.type);
-    
+
     return (
       <TouchableOpacity
         style={[styles.notificationItem, !item.is_read && styles.unreadItem]}
@@ -101,7 +103,7 @@ const NotificationsListScreen: React.FC = () => {
         <View style={[styles.iconContainer, { backgroundColor: `${icon.color}20` }]}>
           <Icon name={icon.name} size={22} color={icon.color} />
         </View>
-        
+
         <View style={styles.contentContainer}>
           <Text style={styles.notificationTitle}>{item.title}</Text>
           <Text style={styles.notificationBody} numberOfLines={2}>{item.body}</Text>
@@ -131,7 +133,7 @@ const NotificationsListScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#14090e', '#4a1e34']} style={styles.gradient}>
+      <LinearGradient colors={selectedGradient.colors} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.header}>

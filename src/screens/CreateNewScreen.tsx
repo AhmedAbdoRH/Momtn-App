@@ -19,6 +19,7 @@ import ImagePicker from 'react-native-image-crop-picker';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useToast } from '../providers/ToastProvider';
+import { useBackground } from '../providers/BackgroundProvider';
 import RNFS from 'react-native-fs';
 import { decode as decodeBase64 } from 'base64-arraybuffer';
 import HorizontalLoader from '../components/ui/HorizontalLoader';
@@ -39,6 +40,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
 
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { selectedGradient } = useBackground();
 
   // Content type state
   const [contentType, setContentType] = useState<'image' | 'text'>('image');
@@ -277,7 +279,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
       if (insertError) throw insertError;
 
       showToast({
-        message: 'تم نشر الصورة بنجاح',
+        message: 'تم اضافة الإمتنان بنجاح',
         type: 'success'
       });
       onPhotoAdded?.();
@@ -291,7 +293,8 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
   };
 
   return (
-    <LinearGradient colors={['#14090e', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={selectedGradient.colors} style={styles.container}>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} />
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
@@ -316,22 +319,6 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
             {/* Content Type Selector */}
             <View style={styles.typeSelector}>
               <TouchableOpacity
-                style={[styles.typeButton, contentType === 'image' && styles.typeButtonActive]}
-                onPress={() => setContentType('image')}
-              >
-                <Icon
-                  name="image-outline"
-                  size={20}
-                  color={contentType === 'image' ? '#fff' : 'rgba(255,255,255,0.6)'}
-                />
-                <Text
-                  style={[styles.typeButtonText, contentType === 'image' && styles.typeButtonTextActive]}
-                >
-                  رفع صورة
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
                 style={[styles.typeButton, contentType === 'text' && styles.typeButtonActive]}
                 onPress={() => setContentType('text')}
               >
@@ -344,6 +331,22 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
                   style={[styles.typeButtonText, contentType === 'text' && styles.typeButtonTextActive]}
                 >
                   امتنان كتابي
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.typeButton, contentType === 'image' && styles.typeButtonActive]}
+                onPress={() => setContentType('image')}
+              >
+                <Icon
+                  name="image-outline"
+                  size={20}
+                  color={contentType === 'image' ? '#fff' : 'rgba(255,255,255,0.6)'}
+                />
+                <Text
+                  style={[styles.typeButtonText, contentType === 'image' && styles.typeButtonTextActive]}
+                >
+                  رفع صورة
                 </Text>
               </TouchableOpacity>
             </View>
@@ -492,7 +495,7 @@ const CreateNewScreen: React.FC<CreateNewScreenProps> = ({ navigation, route }) 
             style={[
               styles.submitButton,
               (isSubmitting || (!imageUri && contentType === 'image') || (!textContent && contentType === 'text')) &&
-                styles.submitButtonDisabled,
+              styles.submitButtonDisabled,
             ]}
             onPress={handleSubmit}
             disabled={isSubmitting || (!imageUri && contentType === 'image') || (!textContent.trim() && contentType === 'text')}
@@ -778,7 +781,7 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 16,
     paddingBottom: 30,
-    backgroundColor: 'rgba(20,9,14,0.95)',
+    backgroundColor: 'transparent',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
   },

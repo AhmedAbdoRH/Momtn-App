@@ -11,13 +11,16 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
-import { 
-  Colors, 
-  Spacing, 
-  BorderRadius, 
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
   ComponentSizes,
   ZIndex,
+  Shadows,
+  Typography,
 } from '../theme';
+import { useBackground } from '../src/providers/BackgroundProvider';
 
 interface BottomNavigationBarProps {
   activeTab: 'personal' | 'shared';
@@ -28,6 +31,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
   activeTab,
   onTabChange,
 }) => {
+  const { selectedGradient } = useBackground();
   const personalScale = useRef(new Animated.Value(activeTab === 'personal' ? 1 : 0.9)).current;
   const sharedScale = useRef(new Animated.Value(activeTab === 'shared' ? 1 : 0.9)).current;
   const indicatorPosition = useRef(new Animated.Value(activeTab === 'personal' ? 0 : 1)).current;
@@ -64,13 +68,13 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = ({
     <View style={styles.container}>
       {/* Glass background with gradient */}
       <LinearGradient
-        colors={['rgba(20, 9, 14, 0.95)', 'rgba(45, 27, 36, 0.98)']}
+        colors={[selectedGradient.colors[0] + 'F2', selectedGradient.colors[1] + 'FA']} // Adding transparency for glass effect
         style={styles.gradientBackground}
       />
-      
+
       {/* Top border glow */}
       <View style={styles.topBorderGlow} />
-      
+
       {/* Navigation content */}
       <View style={styles.navigationContent}>
         {/* Personal Space Tab */}

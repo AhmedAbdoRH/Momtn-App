@@ -14,12 +14,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useBackground } from '../providers/BackgroundProvider';
 import { GroupsService, Group } from '../services/groups';
 import CustomAlertDialog from '../components/CustomAlertDialog';
 
 const GroupsManagementScreen: React.FC = () => {
   const navigation = useNavigation();
-  
+  const { selectedGradient } = useBackground();
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -120,7 +122,7 @@ const GroupsManagementScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#14090e', '#4a1e34']} style={styles.gradient}>
+      <LinearGradient colors={selectedGradient.colors} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.header}>

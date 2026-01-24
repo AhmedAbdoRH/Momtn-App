@@ -24,6 +24,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useToast } from '../providers/ToastProvider';
+import { useBackground } from '../providers/BackgroundProvider';
 import { useNavigation } from '@react-navigation/native';
 
 // Import components from their new locations
@@ -67,6 +68,7 @@ import messaging from '@react-native-firebase/messaging';
 const HomeScreen: React.FC = () => {
   const { user, signOut } = useAuth();
   const { showToast } = useToast();
+  const { selectedGradient } = useBackground();
   const navigation = useNavigation();
   const route = useRoute<HomeScreenRouteProp>();
   const { unreadCount, markAllAsRead } = useNotifications(user?.id || null);
@@ -92,7 +94,7 @@ const HomeScreen: React.FC = () => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     // Trigger when user is 500 pixels from the bottom
     const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 500;
-    
+
     if (isCloseToBottom && !isNearBottom) {
       setIsNearBottom(true);
       photoGridRef.current?.loadMore();
@@ -185,7 +187,7 @@ const HomeScreen: React.FC = () => {
     const phoneNumber = '201008116452';
     const message = 'السلام عليكم، أود تقديم ملاحظة بخصوص تطبيق ممتن:';
     const url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
-    
+
     Linking.canOpenURL(url).then(supported => {
       if (supported) {
         Linking.openURL(url);
@@ -506,16 +508,8 @@ const HomeScreen: React.FC = () => {
 
       if (activeTab === 'shared' && selectedGroup) {
         await GroupsService.addPhotoToGroup(selectedGroup.id, photoData);
-        showToast({
-          message: 'تم نشر الصورة في المجموعة بنجاح',
-          type: 'success',
-        });
       } else {
         await GroupsService.addPersonalPhoto(photoData);
-        showToast({
-          message: 'تم نشر الصورة الشخصية بنجاح',
-          type: 'success',
-        });
       }
 
       // Trigger PhotoGrid refresh
@@ -628,7 +622,7 @@ const HomeScreen: React.FC = () => {
         .single();
 
       if (error) throw error;
-      
+
       setSelectedGroup(data);
       setUserGroups(prev => prev.map(g => g.id === data.id ? data : g));
       showToast({ message: 'تم تحديث اسم المساحة بنجاح', type: 'success' });
@@ -643,7 +637,7 @@ const HomeScreen: React.FC = () => {
 
   const handleLeaveGroup = async () => {
     if (!selectedGroup) return;
-    
+
     setAlertDialogProps({
       title: 'مغادرة المساحة',
       message: 'هل أنت متأكد من رغبتك في مغادرة هذه المساحة المشتركة؟',
@@ -724,7 +718,7 @@ const HomeScreen: React.FC = () => {
 
       console.log('Attempting to copy to clipboard:', text);
       Clipboard.setString(text);
-      
+
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
@@ -770,7 +764,7 @@ const HomeScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       <LinearGradient
-        colors={[Colors.authGradientStart, Colors.authGradientMiddle, Colors.authGradientEnd]}
+        colors={selectedGradient.colors}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
@@ -1266,7 +1260,7 @@ const HomeScreen: React.FC = () => {
                       </TouchableOpacity>
                     )}
                   </View>
-                  
+
                   {isEditingGroupName ? (
                     <View style={styles.editContainer}>
                       <TextInput
@@ -1278,8 +1272,8 @@ const HomeScreen: React.FC = () => {
                         autoFocus
                       />
                       <View style={styles.editActions}>
-                        <TouchableOpacity 
-                          style={[styles.saveButton, isUpdatingGroup && { opacity: 0.7 }]} 
+                        <TouchableOpacity
+                          style={[styles.saveButton, isUpdatingGroup && { opacity: 0.7 }]}
                           onPress={() => handleUpdateGroupInfo(editingGroupName, selectedGroup?.description || '')}
                           disabled={isUpdatingGroup}
                         >
@@ -1289,8 +1283,8 @@ const HomeScreen: React.FC = () => {
                             <Text style={styles.saveButtonText}>حفظ</Text>
                           )}
                         </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.cancelEditButton} 
+                        <TouchableOpacity
+                          style={styles.cancelEditButton}
                           onPress={() => {
                             setIsEditingGroupName(false);
                             setEditingGroupName(selectedGroup?.name || '');
@@ -1311,7 +1305,7 @@ const HomeScreen: React.FC = () => {
                     <View style={styles.inviteCodeContainerHighlight}>
                       <Text style={styles.settingsInviteCode}>{selectedGroup?.invite_code}</Text>
                     </View>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[styles.settingsCopyButton, isCopied && { backgroundColor: '#4ADE80' }]}
                       onPress={() => copyToClipboard(selectedGroup?.invite_code || '')}
                     >
@@ -1365,7 +1359,7 @@ const HomeScreen: React.FC = () => {
               <View style={styles.settingsSection}>
                 <View style={[styles.settingsCard, { backgroundColor: 'transparent', borderWidth: 0, elevation: 0, padding: 0 }]}>
                   {selectedGroup?.created_by === user?.id ? (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.dangerButton}
                       onPress={handleDeleteGroup}
                     >
@@ -1373,7 +1367,7 @@ const HomeScreen: React.FC = () => {
                       <Text style={styles.dangerButtonText}>حذف المساحة نهائياً</Text>
                     </TouchableOpacity>
                   ) : (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.dangerButton}
                       onPress={handleLeaveGroup}
                     >

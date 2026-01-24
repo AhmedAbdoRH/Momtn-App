@@ -19,47 +19,29 @@ import { decode } from 'base64-arraybuffer';
 import RNFS from 'react-native-fs';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../components/auth/AuthProvider';
 import { useToast } from '../providers/ToastProvider';
 import { supabase } from '../services/supabase';
 import { ProfileService } from '../services/profile';
 import { TestNotification } from '../utils/testNotification';
+import { useBackground, gradientOptions, GradientOption } from '../providers/BackgroundProvider';
 import { Colors, Spacing, Typography, BorderRadius } from '../../theme';
 import HorizontalLoader from '../components/ui/HorizontalLoader';
 
-const gradientOptions = [
-  {
-    id: 'default',
-    name: 'افتراضي',
-    colors: ['#2D1F3D', '#1A1F2C', '#3D1F2C'],
-  },
-  {
-    id: 'spectrum-red',
-    name: 'الأحمر الهادئ',
-    colors: ['#3B0A0A', '#5C1A1A', '#3D1F2C'],
-  },
-  {
-    id: 'velvet-rose-darker',
-    name: 'الورد المخملي الداكن',
-    colors: ['#14090e', '#4a1e34', '#9c3d1a'],
-  },
-  {
-    id: 'olive-obsidian',
-    name: 'زيتون الأوبسيديان',
-    colors: ['#0A0E0A', '#1F2D24', '#3B4A36'],
-  },
-];
+
 
 const SettingsScreen: React.FC = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, signOut } = useAuth();
   const { showToast } = useToast();
+  const { selectedGradient, setGradient, isPremiumUser } = useBackground();
   const navigation = useNavigation();
 
   const [displayName, setDisplayName] = useState('');
   const [greetingMessage, setGreetingMessage] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [selectedGradient, setSelectedGradient] = useState('default');
+  const [selectedGradientLocal, setSelectedGradientLocal] = useState('default');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,14 +59,14 @@ const SettingsScreen: React.FC = () => {
         setDisplayName(profile.full_name || user.user_metadata?.full_name || '');
         setGreetingMessage(profile.user_welcome_message || 'لحظاتك السعيدة، والنعم الجميلة في حياتك ✨');
         setAvatarUrl(profile.avatar_url || user.user_metadata?.avatar_url || null);
-        setSelectedGradient(user.user_metadata?.background_preference || 'default');
+        setSelectedGradientLocal(selectedGradient.id);
       }
     } catch (e) {
       console.warn('Could not load profile:', e);
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, selectedGradient]);
 
   useEffect(() => {
     loadProfileData();
@@ -114,7 +96,7 @@ const SettingsScreen: React.FC = () => {
 
       const fileExt = asset.fileName?.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${user.id}_${Date.now()}.${fileExt}`;
-      
+
       let arrayBuffer;
       if (asset.base64) {
         arrayBuffer = decode(asset.base64);
@@ -162,10 +144,10 @@ const SettingsScreen: React.FC = () => {
       await ProfileService.updateProfile(user!.id, {
         full_name: displayName.trim(),
       });
-      
+
       setSaveStates(prev => ({ ...prev, name: 'success' }));
       showToast({ message: 'تم تحديث الاسم بنجاح', type: 'success' });
-      
+
       // إخفاء حالة النجاح بعد ثانيتين
       setTimeout(() => {
         setSaveStates(prev => ({ ...prev, name: 'idle' }));
@@ -185,10 +167,10 @@ const SettingsScreen: React.FC = () => {
       await ProfileService.updateProfile(user!.id, {
         user_welcome_message: greetingMessage.trim(),
       });
-      
+
       setSaveStates(prev => ({ ...prev, greeting: 'success' }));
       showToast({ message: 'تم تحديث رسالة الترحيب بنجاح', type: 'success' });
-      
+
       setTimeout(() => {
         setSaveStates(prev => ({ ...prev, greeting: 'idle' }));
       }, 2000);
@@ -202,29 +184,37 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleSelectGradient = async (gradientId: string) => {
-    setSelectedGradient(gradientId);
+    const selectedOption = gradientOptions.find(g => g.id === gradientId);
+
+    // Check premium status
+    if (selectedOption?.isPremium && !isPremiumUser) {
+      Alert.alert(
+        'ميزة ممتن بريميوم 👑',
+        'هذه السمة مخصصة لمشتركي نسخة البريميوم. ستتوفر نسخة "ممتن بريميوم" قريباً!',
+        [
+          { text: 'حسناً', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+
+    // Update specific local state first to ensure UI feedback
+    setSelectedGradientLocal(gradientId);
+
     try {
-      const { error } = await supabase.auth.updateUser({
-        data: { background_preference: gradientId }
-      });
-      if (error) throw error;
+      await setGradient(gradientId);
       if (refreshUser) await refreshUser();
       showToast({ message: 'تم تغيير الخلفية بنجاح', type: 'success' });
     } catch (error: any) {
+      console.error('Error setting gradient:', error);
       showToast({ message: 'فشل تغيير الخلفية', type: 'error' });
+      // Revert local state on error
+      const current = gradientOptions.find(g => g.id === selectedGradient.id)?.id;
+      if (current) setSelectedGradientLocal(current);
     }
   };
 
-  const handleTestNotifications = async () => {
-    if (!user?.id) return;
-    try {
-      showToast({ message: 'جاري إرسال إشعار تجريبي...', type: 'info' });
-      await TestNotification.sendTestNotification(user.id);
-      showToast({ message: 'تم إرسال الإشعار بنجاح!', type: 'success' });
-    } catch (error: any) {
-      showToast({ message: 'فشل إرسال الإشعار', type: 'error' });
-    }
-  };
+
 
   if (isLoading) {
     return (
@@ -237,7 +227,7 @@ const SettingsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#14090e', '#4a1e34']} style={styles.gradient}>
+      <LinearGradient colors={selectedGradient.colors} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>الإعدادات العامة</Text>
@@ -270,8 +260,8 @@ const SettingsScreen: React.FC = () => {
                     </View>
                   )}
                 </View>
-                <TouchableOpacity 
-                  style={styles.changeAvatarButton} 
+                <TouchableOpacity
+                  style={styles.changeAvatarButton}
                   onPress={handleUpdateAvatar}
                   disabled={isUploadingImage}
                 >
@@ -296,12 +286,12 @@ const SettingsScreen: React.FC = () => {
                 placeholder="أدخل اسمك"
                 placeholderTextColor="rgba(255,255,255,0.3)"
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.saveButton, 
+                  styles.saveButton,
                   saveStates.name === 'loading' && styles.saveButtonLoading,
-                ]} 
-                onPress={handleSaveName} 
+                ]}
+                onPress={handleSaveName}
                 disabled={saveStates.name !== 'idle'}
               >
                 {saveStates.name === 'loading' ? (
@@ -332,12 +322,12 @@ const SettingsScreen: React.FC = () => {
                 placeholderTextColor="rgba(255,255,255,0.3)"
                 multiline
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
-                  styles.saveButton, 
+                  styles.saveButton,
                   saveStates.greeting === 'loading' && styles.saveButtonLoading,
-                ]} 
-                onPress={handleSaveGreeting} 
+                ]}
+                onPress={handleSaveGreeting}
                 disabled={saveStates.greeting !== 'idle'}
               >
                 {saveStates.greeting === 'loading' ? (
@@ -366,28 +356,24 @@ const SettingsScreen: React.FC = () => {
                     key={option.id}
                     style={[
                       styles.gradientItem,
-                      selectedGradient === option.id && styles.selectedGradientItem
+                      selectedGradientLocal === option.id && styles.selectedGradientItem
                     ]}
                     onPress={() => handleSelectGradient(option.id)}
                   >
-                    <LinearGradient colors={option.colors} style={styles.gradientPreview} />
+                    <LinearGradient colors={option.colors} style={styles.gradientPreview}>
+                      {option.isPremium && !isPremiumUser && (
+                        <View style={styles.lockOverlay}>
+                          <MaterialCommunityIcons name="crown" size={24} color="#FFA000" />
+                        </View>
+                      )}
+                    </LinearGradient>
                     <Text style={styles.gradientName}>{option.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
-            {/* Notifications Section */}
-            <TouchableOpacity style={styles.notificationItem} onPress={handleTestNotifications}>
-              <View style={styles.notificationIcon}>
-                <Icon name="notifications-outline" size={24} color="#fff" />
-              </View>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>ضبط الإشعارات</Text>
-                <Text style={styles.notificationDesc}>اختبار وتعديل تنبيهات التطبيق</Text>
-              </View>
-              <Icon name="chevron-back" size={20} color="rgba(255,255,255,0.3)" />
-            </TouchableOpacity>
+
 
             <View style={styles.footer}>
               <Text style={styles.versionText}>الإصدار 1.1.2</Text>
@@ -501,7 +487,19 @@ const styles = StyleSheet.create({
   gradientItem: { width: '48%', marginBottom: 15, borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
   selectedGradientItem: { borderColor: '#fff' },
   gradientPreview: { height: 60, width: '100%' },
-  gradientName: { color: '#fff', fontSize: 12, textAlign: 'center', paddingVertical: 8, backgroundColor: 'rgba(0,0,0,0.5)' },
+  gradientName: {
+    color: '#fff',
+    fontSize: 12, // Reduced font size
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+  },
   notificationItem: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

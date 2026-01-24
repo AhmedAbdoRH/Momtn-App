@@ -36,6 +36,8 @@ interface UseGroupChatReturn {
   toggleLike: (messageId: string) => Promise<void>;
   loadMoreMessages: () => Promise<void>;
   hasMore: boolean;
+  deleteMessage: (messageId: string) => Promise<boolean>;
+  editMessage: (messageId: string, newContent: string) => Promise<boolean>;
 }
 
 const MESSAGES_PER_PAGE = 20;
@@ -73,7 +75,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         const userIds = [...new Set(sortedMessages.map((m: any) => m.user_id))];
         const { data: usersData } = await supabase
           .from('users')
-          .select('id, email, full_name, avatar_url')
+          .select('id, email, full_name')
           .in('id', userIds as string[]);
 
         const usersMap = new Map((usersData as any)?.map((u: any) => [u.id, u]) || []);
@@ -150,14 +152,14 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
         const userIds = [...new Set(moreMessages.map((m: any) => m.user_id))];
         const { data: usersData } = await supabase
           .from('users')
-          .select('id, email, full_name, avatar_url')
+          .select('id, email, full_name')
           .in('id', userIds as string[]);
 
         const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
 
         const messagesWithUsers: ChatMessage[] = moreMessages.map((msg: any) => ({
           ...msg,
-          user: usersMap.get(msg.user_id) || { email: '', full_name: null, avatar_url: null },
+          user: usersMap.get(msg.user_id) || { email: '', full_name: null },
           likes: msg.likes || []
         }));
 
@@ -188,8 +190,8 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
 
         if (image.base64) {
           // تنظيف بيانات base64 من أي بادئة (prefix) إذا وجدت
-          const base64Data = image.base64.includes('base64,') 
-            ? image.base64.split('base64,')[1] 
+          const base64Data = image.base64.includes('base64,')
+            ? image.base64.split('base64,')[1]
             : image.base64;
 
           const { error } = await supabase.storage
@@ -204,7 +206,7 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
           try {
             const response = await fetch(image.uri);
             const blob = await response.blob();
-            
+
             const { error } = await supabase.storage
               .from('chat-images')
               .upload(filePath, blob, {
@@ -313,6 +315,54 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
       console.error('Error toggling like:', err);
     }
   }, [userId, messages]);
+
+  // دالة حذف الرسالة
+  const deleteMessage = useCallback(async (messageId: string): Promise<boolean> => {
+    if (!userId) return false;
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('group_messages')
+        .delete()
+        .eq('id', messageId)
+        .eq('user_id', userId); // التحقق من أن المستخدم هو صاحب الرسالة
+
+      if (deleteError) throw deleteError;
+
+      // التحديث المحلي سيتم عبر Realtime subscription
+      // ولكن للسرعة يمكننا التحديث يدوياً أيضاً
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      return true;
+    } catch (err: any) {
+      console.error('Error deleting message:', err);
+      // user friendly error handled in UI
+      return false;
+    }
+  }, [userId]);
+
+  // دالة تعديل الرسالة
+  const editMessage = useCallback(async (messageId: string, newContent: string): Promise<boolean> => {
+    if (!userId || !newContent.trim()) return false;
+
+    try {
+      const { error: updateError } = await supabase
+        .from('group_messages')
+        .update({ content: newContent.trim() })
+        .eq('id', messageId)
+        .eq('user_id', userId);
+
+      if (updateError) throw updateError;
+
+      // التحديث المحلي
+      setMessages(prev => prev.map(m =>
+        m.id === messageId ? { ...m, content: newContent.trim() } : m
+      ));
+      return true;
+    } catch (err: any) {
+      console.error('Error editing message:', err);
+      return false;
+    }
+  }, [userId]);
 
   // الاشتراك في Realtime
   useEffect(() => {
@@ -423,7 +473,9 @@ export const useGroupChat = (groupId: string | null, userId: string): UseGroupCh
     sendMessage,
     toggleLike,
     loadMoreMessages,
-    hasMore
+    hasMore,
+    deleteMessage,
+    editMessage
   };
 };
 

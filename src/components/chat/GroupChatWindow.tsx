@@ -12,6 +12,8 @@ import {
   Image,
   Alert,
   PermissionsAndroid,
+  TouchableWithoutFeedback,
+  Dimensions,
 } from 'react-native';
 import HorizontalLoader from '../ui/HorizontalLoader';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +24,8 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import RNFS from 'react-native-fs';
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../../../theme';
 import { useGroupChat, ChatMessage } from '../../hooks/useGroupChat';
+import { useToast } from '../../providers/ToastProvider';
+import { useBackground } from '../../providers/BackgroundProvider';
 
 interface GroupChatWindowProps {
   visible: boolean;
@@ -49,6 +53,9 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
   const isFirstLoad = useRef(true);
   const inputRef = useRef<TextInput>(null);
 
+  const { showToast } = useToast();
+  const { selectedGradient } = useBackground();
+
   const {
     messages,
     loading,
@@ -57,7 +64,15 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     toggleLike,
     loadMoreMessages,
     hasMore,
+    deleteMessage,
+    editMessage,
   } = useGroupChat(groupId, currentUserId);
+
+  // States for message actions
+  const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
   // إعادة تعيين الحالة عند فتح/إغلاق الشات
   useEffect(() => {
@@ -65,6 +80,9 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
       shouldScrollToEnd.current = true;
       isFirstLoad.current = true;
       setReplyingTo(null);
+      setSelectedMessage(null);
+      setIsEditing(false);
+      setEditingMessageId(null);
     }
   }, [visible]);
 
@@ -106,9 +124,9 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
   const handlePickImage = async () => {
     const result = await launchImageLibrary({
       mediaType: 'photo',
-      quality: 0.4, // جودة منخفضة للدردشة لتقليل الحجم جداً (من 0.5 إلى 0.4)
-      maxWidth: 800, // تقليل العرض الأقصى لصور الدردشة (من 1024 إلى 800)
-      maxHeight: 800, // تقليل الارتفاع الأقصى لصور الدردشة
+      quality: 0.4,
+      maxWidth: 800,
+      maxHeight: 800,
       includeBase64: true,
     });
 
@@ -119,30 +137,105 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 
   // إرسال الرسالة
   const handleSend = async () => {
-    // إذا كان الحقل فارغاً ولا توجد صورة، نرسل قلباً
     const messageToSend = inputText.trim() || (selectedImage ? '' : '❤️');
-    
+
     if (!messageToSend && !selectedImage && !sending) return;
 
     setSending(true);
     try {
-      const success = await sendMessage(
-        messageToSend,
-        selectedImage,
-        replyingTo?.id
-      );
+      if (isEditing && editingMessageId) {
+        const success = await editMessage(editingMessageId, messageToSend);
+        if (success) {
+          setIsEditing(false);
+          setEditingMessageId(null);
+          setInputText('');
+          showToast({ message: 'تم تعديل الرسالة', type: 'success' });
+        } else {
+          showToast({ message: 'فشل تعديل الرسالة', type: 'error' });
+        }
+      } else {
+        const success = await sendMessage(
+          messageToSend,
+          selectedImage,
+          replyingTo?.id
+        );
 
-      if (success) {
-        setInputText('');
-        setSelectedImage(null);
-        setReplyingTo(null);
-        shouldScrollToEnd.current = true;
+        if (success) {
+          setInputText('');
+          setSelectedImage(null);
+          setReplyingTo(null);
+          shouldScrollToEnd.current = true;
+        }
       }
     } catch (err) {
-      console.error('Send error:', err);
+      console.error('Send/Edit error:', err);
     } finally {
       setSending(false);
     }
+  };
+
+  // Message Actions Handlers
+  const handleLongPress = (event: any, message: ChatMessage) => {
+    const { pageX, pageY } = event.nativeEvent;
+    setMenuPosition({ x: pageX, y: pageY });
+    setSelectedMessage(message);
+  };
+
+  const handleActionReply = () => {
+    if (selectedMessage) {
+      handleReply(selectedMessage);
+      setSelectedMessage(null);
+    }
+  };
+
+  const handleActionEdit = () => {
+    if (selectedMessage) {
+      setIsEditing(true);
+      setEditingMessageId(selectedMessage.id);
+      setInputText(selectedMessage.content);
+      setSelectedMessage(null);
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleActionDelete = () => {
+    if (selectedMessage) {
+      Alert.alert(
+        'حذف الرسالة',
+        'هل أنت متأكد من رغبتك في حذف هذه الرسالة؟',
+        [
+          { text: 'إلغاء', style: 'cancel', onPress: () => setSelectedMessage(null) },
+          {
+            text: 'حذف',
+            style: 'destructive',
+            onPress: async () => {
+              const success = await deleteMessage(selectedMessage.id);
+              if (success) {
+                showToast({ message: 'تم حذف الرسالة', type: 'success' });
+              } else {
+                showToast({ message: 'فشل حذف الرسالة', type: 'error' });
+              }
+              setSelectedMessage(null);
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  const closeMenu = () => setSelectedMessage(null);
+
+  const handleActionLike = () => {
+    if (selectedMessage) {
+      toggleLike(selectedMessage.id);
+      setSelectedMessage(null);
+    }
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditingMessageId(null);
+    setInputText('');
   };
 
   const formatTime = (dateString: string) => {
@@ -176,7 +269,6 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
     return 'مستخدم';
   };
 
-  // وظيفة تحميل الصورة
   const handleDownloadImage = async (imageUrl: string) => {
     if (downloading) return;
 
@@ -192,13 +284,11 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
             buttonPositive: 'موافق',
           }
         );
-        // في أندرويد 10 وما فوق، لا نحتاج دائماً لهذه الصلاحية للتحميل في المجلدات العامة
-        // ولكن للتبسيط سنكتفي بالتحقق أو المتابعة
       }
 
       setDownloading(true);
       const fileName = `Momtn_${Date.now()}.jpg`;
-      const downloadPath = Platform.OS === 'ios' 
+      const downloadPath = Platform.OS === 'ios'
         ? `${RNFS.DocumentDirectoryPath}/${fileName}`
         : `${RNFS.ExternalStorageDirectoryPath}/Download/${fileName}`;
 
@@ -208,7 +298,6 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
       }).promise;
 
       if (downloadResult.statusCode === 200) {
-        // إخبار النظام بوجود ملف جديد ليظهر في المعرض (أندرويد فقط)
         if (Platform.OS === 'android') {
           await RNFS.scanFile(downloadPath);
         }
@@ -292,7 +381,6 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
               } : undefined}
               onSwipeableWillOpen={() => {
                 handleReply(item);
-                // إغلاق السحب فوراً بعد تفعيل الرد
                 setTimeout(() => {
                   (item as any).swipeableRef?.close();
                 }, 100);
@@ -300,13 +388,13 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
             >
               <TouchableOpacity
                 activeOpacity={0.9}
-                onLongPress={() => toggleLike(item.id)}
+                onLongPress={(e) => handleLongPress(e, item)}
+                delayLongPress={400}
                 style={[
                   styles.messageBubble,
                   isMe ? styles.myBubble : styles.otherBubble
                 ]}
               >
-                {/* عرض الرسالة المردود عليها داخل الفقاعة */}
                 {item.replied_message && (
                   <View style={[
                     styles.repliedMessageContainer,
@@ -324,10 +412,9 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                   </View>
                 )}
 
-                {/* عرض الصورة إذا وجدت */}
                 {item.image_url ? (
-                  <TouchableOpacity 
-                    activeOpacity={0.9} 
+                  <TouchableOpacity
+                    activeOpacity={0.9}
                     onPress={() => {
                       if (item.image_url) {
                         setViewingImage(item.image_url);
@@ -339,8 +426,6 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                       source={{ uri: item.image_url }}
                       style={styles.messageImage}
                       resizeMode="cover"
-                      onLoad={() => console.log('Image loaded successfully:', item.image_url)}
-                      onError={(e) => console.log('Image load error:', e.nativeEvent.error, item.image_url)}
                     />
                   </TouchableOpacity>
                 ) : null}
@@ -364,7 +449,6 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                   </Text>
                 </View>
 
-                {/* زر التفاعل بالقلب - دائماً على اليسار */}
                 <TouchableOpacity
                   style={[
                     styles.heartBadge,
@@ -412,7 +496,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
       onRequestClose={onClose}
     >
       <LinearGradient
-        colors={[Colors.gradientStart, Colors.gradientMiddle, Colors.gradientEnd]}
+        colors={selectedGradient.colors}
         style={styles.container}
       >
         <SafeAreaView style={styles.safeArea}>
@@ -481,7 +565,6 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
 
             {/* Input Area */}
             <View style={styles.bottomSection}>
-              {/* معاينة الصورة المختارة */}
               {selectedImage && (
                 <View style={styles.imagePreviewContainer}>
                   <Image source={{ uri: selectedImage.uri }} style={styles.imagePreview} />
@@ -494,7 +577,6 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                 </View>
               )}
 
-              {/* شريط الرد المفعّل */}
               {replyingTo && (
                 <View style={styles.replyBar}>
                   <View style={styles.replyBarIndicator} />
@@ -525,7 +607,6 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                       name={inputText.trim() || selectedImage ? "send" : "heart"}
                       size={inputText.trim() || selectedImage ? 20 : 24}
                       color={Colors.textPrimary}
-                      style={!(inputText.trim() || selectedImage) && { transform: [{ scale: 1.1 }] }}
                     />
                   )}
                 </TouchableOpacity>
@@ -555,6 +636,56 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
         </SafeAreaView>
       </LinearGradient>
 
+      {/* Context Menu Modal */}
+      <Modal
+        visible={!!selectedMessage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeMenu}
+      >
+        <TouchableWithoutFeedback onPress={closeMenu}>
+          <View style={styles.menuOverlay}>
+            <View
+              style={[
+                styles.contextMenu,
+                {
+                  top: menuPosition.y - 120 > 50 ? menuPosition.y - 120 : menuPosition.y + 20,
+                  left: menuPosition.x > Dimensions.get('window').width / 2 ? undefined : menuPosition.x,
+                  right: menuPosition.x > Dimensions.get('window').width / 2 ? Dimensions.get('window').width - menuPosition.x : undefined,
+                }
+              ]}
+            >
+              <TouchableOpacity style={styles.menuItem} onPress={handleActionReply}>
+                <Text style={styles.menuItemText}>رد</Text>
+                <Icon name="arrow-undo-outline" size={18} color={Colors.textPrimary} />
+              </TouchableOpacity>
+
+              <View style={styles.menuDivider} />
+              <TouchableOpacity style={styles.menuItem} onPress={handleActionLike}>
+                <Text style={styles.menuItemText}>إعجاب</Text>
+                <Icon name="heart-outline" size={18} color="#ea384c" />
+              </TouchableOpacity>
+
+              {selectedMessage?.user_id === currentUserId && (
+                <>
+                  <View style={styles.menuDivider} />
+                  <TouchableOpacity style={styles.menuItem} onPress={handleActionEdit}>
+                    <Text style={styles.menuItemText}>تعديل</Text>
+                    <Icon name="create-outline" size={18} color={Colors.textPrimary} />
+                  </TouchableOpacity>
+
+                  <View style={styles.menuDivider} />
+                  <TouchableOpacity style={styles.menuItem} onPress={handleActionDelete}>
+                    <Text style={[styles.menuItemText, { color: Colors.error }]}>حذف</Text>
+                    <Icon name="trash-outline" size={18} color={Colors.error} />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
       {/* مودال عرض الصورة بملء الشاشة */}
       <Modal
         visible={!!viewingImage}
@@ -563,23 +694,23 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
         onRequestClose={() => setViewingImage(null)}
       >
         <View style={styles.fullScreenContainer}>
-          <TouchableOpacity 
-            style={styles.fullScreenClose} 
+          <TouchableOpacity
+            style={styles.fullScreenClose}
             onPress={() => setViewingImage(null)}
           >
             <Icon name="close" size={30} color="#fff" />
           </TouchableOpacity>
 
           {viewingImage && (
-            <Image 
-              source={{ uri: viewingImage }} 
-              style={styles.fullScreenImage} 
+            <Image
+              source={{ uri: viewingImage }}
+              style={styles.fullScreenImage}
               resizeMode="contain"
             />
           )}
 
-          <TouchableOpacity 
-            style={styles.downloadButton} 
+          <TouchableOpacity
+            style={styles.downloadButton}
             onPress={() => viewingImage && handleDownloadImage(viewingImage)}
             disabled={downloading}
           >
@@ -608,8 +739,6 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -641,8 +770,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     fontSize: 12,
   },
-
-  // List
   listContent: {
     paddingVertical: Spacing.xl,
   },
@@ -703,8 +830,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.body.fontSize,
     textAlign: 'center',
   },
-
-  // Date Separator
   dateSeparator: {
     alignItems: 'center',
     marginVertical: Spacing.md,
@@ -717,8 +842,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: BorderRadius.full,
   },
-
-  // Messages
   messageRow: {
     flexDirection: 'row',
     marginBottom: Spacing.lg,
@@ -727,13 +850,11 @@ const styles = StyleSheet.create({
   },
   myMessageRow: {
     justifyContent: 'flex-start',
-    // In Arabic: My messages are usually on the RIGHT.
     flexDirection: 'row-reverse',
   },
   otherMessageRow: {
     flexDirection: 'row',
   },
-
   avatarContainer: {
     marginRight: Spacing.sm,
     justifyContent: 'flex-end',
@@ -761,7 +882,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-
   messageBubbleWrapper: {
     maxWidth: '80%',
     position: 'relative',
@@ -805,7 +925,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-
   senderName: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.6)',
@@ -813,13 +932,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     fontWeight: '600',
   },
-
   messageBubble: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.lg, // زيادة المسافة السفلية للقلب
+    paddingBottom: Spacing.lg,
     borderRadius: 20,
-    minWidth: 70, // زيادة العرض الأدنى قليلاً
+    minWidth: 70,
     ...Shadows.md,
   },
   myBubble: {
@@ -834,8 +952,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-
-  // Replied Message inside bubble
   repliedMessageContainer: {
     flexDirection: 'row',
     backgroundColor: 'rgba(0,0,0,0.15)',
@@ -874,14 +990,11 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     textAlign: 'right',
   },
-
   swipeActionContainer: {
     width: 50,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Bottom Section & Reply Bar
   bottomSection: {
     backgroundColor: 'rgba(0,0,0,0.4)',
     borderTopWidth: 1,
@@ -893,7 +1006,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderLeftWidth: 0,
   },
   replyBarIndicator: {
     width: 4,
@@ -919,7 +1031,6 @@ const styles = StyleSheet.create({
   cancelReplyButton: {
     padding: 5,
   },
-
   messageText: {
     fontSize: 16,
     lineHeight: 22,
@@ -932,7 +1043,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'right',
   },
-
   messageFooter: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -949,8 +1059,6 @@ const styles = StyleSheet.create({
   otherMessageTime: {
     color: '#fff',
   },
-
-  // Likes
   heartBadge: {
     position: 'absolute',
     bottom: 4,
@@ -966,9 +1074,6 @@ const styles = StyleSheet.create({
   },
   heartBadgeInactive: {
     backgroundColor: 'transparent',
-    borderWidth: 0,
-    elevation: 0,
-    shadowOpacity: 0,
   },
   likeCount: {
     fontSize: 10,
@@ -976,8 +1081,6 @@ const styles = StyleSheet.create({
     marginLeft: 2,
     fontWeight: 'bold',
   },
-
-  // Load More
   loadMoreButton: {
     alignItems: 'center',
     paddingVertical: Spacing.md,
@@ -986,8 +1089,6 @@ const styles = StyleSheet.create({
     color: Colors.textIndigo,
     fontSize: Typography.bodySmall.fontSize,
   },
-
-  // Error
   errorContainer: {
     backgroundColor: Colors.errorBg,
     paddingHorizontal: Spacing.lg,
@@ -1001,8 +1102,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.bodySmall.fontSize,
     textAlign: 'center',
   },
-
-  // Input Area
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1035,6 +1134,38 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     opacity: 0.5,
     backgroundColor: '#666',
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  contextMenu: {
+    position: 'absolute',
+    backgroundColor: '#2d1b24',
+    borderRadius: 12,
+    padding: 5,
+    minWidth: 150,
+    ...Shadows.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+  },
+  menuItemText: {
+    color: Colors.textPrimary,
+    fontSize: 16,
+    marginRight: 10,
+    fontWeight: '500',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginHorizontal: 10,
   },
 });
 
